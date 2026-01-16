@@ -30,11 +30,13 @@ const state = {
     active: false, // Is crop tool selected
     rect: null, // {x, y, w, h} - current crop rectangle
     isDragging: false, // True if drawing initial selection or resizing
+    isResizing: false, // True if resizing handles
+    isMoving: false, // True if moving the entire crop rect
     activeHandle: null, // 'nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w' or null
     aspectRatio: 'free', // 'free' | 'square' | '4:3' | '16:9'
-    initialMouseX: 0, // Mouse X at start of drag/resize
-    initialMouseY: 0, // Mouse Y at start of drag/resize
-    initialRect: null // {x, y, w, h} - Rect at start of drag/resize
+    initialMouseX: 0, // Mouse X at start of drag/resize/move
+    initialMouseY: 0, // Mouse Y at start of drag/resize/move
+    initialRect: null // {x, y, w, h} - Rect at start of drag/resize/move
   }
 };
 
@@ -63,6 +65,7 @@ function init(w = 800, h = 600) {
   updateUI();
   exitCropMode(); // Reset crop state
 }
+
 
 function setCanvasSize(w, h) {
   state.width = w;
@@ -284,32 +287,39 @@ function handleCropStart(e) {
   const pos = getMousePos(e);
 
   if (state.crop.rect) {
-    // Check if clicking a handle
+    // Check if clicking a handle to resize
     const handle = getHandleAtPoint(pos);
     if (handle) {
       state.crop.isDragging = true;
       state.crop.isResizing = true;
+      state.crop.isMoving = false;
       state.crop.activeHandle = handle;
       state.crop.initialMouseX = pos.x;
       state.crop.initialMouseY = pos.y;
-      state.crop.initialRect = {
-        ...state.crop.rect
+      state.crop.initialRect = { ...state.crop.rect
       }; // Deep copy
       return;
     }
-    // If clicking inside existing rect but not a handle, start new selection
+
+    // Check if clicking inside existing rect (for moving)
     if (pos.x >= state.crop.rect.x && pos.x <= state.crop.rect.x + state.crop.rect.w &&
       pos.y >= state.crop.rect.y && pos.y <= state.crop.rect.y + state.crop.rect.h) {
-      // For now, if clicking inside existing rect but not handle, assume new selection
-      // Could add 'move' functionality for the whole rect here later
+      state.crop.isDragging = true;
+      state.crop.isResizing = false;
+      state.crop.isMoving = true;
+      state.crop.initialMouseX = pos.x;
+      state.crop.initialMouseY = pos.y;
+      state.crop.initialRect = { ...state.crop.rect
+      }; // Store rect's initial position
+      return;
     }
   }
 
   // If no rect, or clicking outside existing rect/handles, start new selection
   state.crop.isDragging = true;
   state.crop.isResizing = false;
+  state.crop.isMoving = false;
   state.crop.activeHandle = null;
-  state.crop.start = pos; // Old property, can be merged into initialMouse
   state.crop.initialMouseX = pos.x;
   state.crop.initialMouseY = pos.y;
   state.crop.rect = {
@@ -320,22 +330,27 @@ function handleCropStart(e) {
   }; // Reset rect for new selection
 }
 
+
 function handleCropMove(e) {
   if (!state.crop.isDragging) return;
   const pos = getMousePos(e);
 
-  if (state.crop.isResizing) {
+  if (state.crop.isMoving) {
+    moveCropRect(pos);
+  } else if (state.crop.isResizing) {
     resizeCropRect(pos);
   } else {
-    updateCropRect(pos);
+    updateCropRect(pos); // Initial selection
   }
   drawCropOverlay();
   updateCropDimensionsUI();
 }
 
+
 function handleCropEnd() {
   state.crop.isDragging = false;
   state.crop.isResizing = false;
+  state.crop.isMoving = false; // Reset move state
   state.crop.activeHandle = null;
   if (state.crop.rect && (state.crop.rect.w < 1 || state.crop.rect.h < 1)) {
     state.crop.rect = null; // Clear if selection is too small
@@ -343,6 +358,7 @@ function handleCropEnd() {
   drawCropOverlay(); // Clear handles
   updateCropDimensionsUI();
 }
+
 
 function updateCropRect(currentPos) {
   const {
@@ -356,41 +372,32 @@ function updateCropRect(currentPos) {
   let x2 = currentPos.x;
   let y2 = currentPos.y;
 
-  let w = x2 - x1;
-  let h = y2 - y1;
+  let w_raw = x2 - x1;
+  let h_raw = y2 - y1;
 
   if (aspectRatio !== 'free') {
-    let ratioW, ratioH;
-    switch (aspectRatio) {
-      case 'square':
-        ratioW = 1;
-        ratioH = 1;
-        break;
-      case '4:3':
-        ratioW = 4;
-        ratioH = 3;
-        break;
-      case '16:9':
-        ratioW = 16;
-        ratioH = 9;
-        break;
-      default:
-        return;
-    }
+    const [ratioW, ratioH] = getAspectRatioNums(aspectRatio);
     const targetRatio = ratioW / ratioH;
 
     // Apply aspect ratio, prioritizing the dimension with larger absolute change
-    if (Math.abs(w) > Math.abs(h * targetRatio)) {
-      h = w / targetRatio;
+    if (Math.abs(w_raw) / targetRatio > Math.abs(h_raw)) {
+      h_raw = Math.sign(h_raw) * (Math.abs(w_raw) / targetRatio);
     } else {
-      w = h * targetRatio;
+      w_raw = Math.sign(w_raw) * (Math.abs(h_raw) * targetRatio);
     }
   }
 
-  let finalX = Math.min(x1, x1 + w);
-  let finalY = Math.min(y1, y1 + h);
-  let finalW = Math.abs(w);
-  let finalH = Math.abs(h);
+  let finalX = Math.min(x1, x1 + w_raw);
+  let finalY = Math.min(y1, y1 + h_raw);
+  let finalW = Math.abs(w_raw);
+  let finalH = Math.abs(h_raw);
+
+  // Clamp to canvas boundaries
+  finalX = Math.max(0, Math.min(finalX, state.width - finalW));
+  finalY = Math.max(0, Math.min(finalY, state.height - finalH));
+  finalW = Math.min(finalW, state.width - finalX); // Ensure width doesn't exceed canvas
+  finalH = Math.min(finalH, state.height - finalY); // Ensure height doesn't exceed canvas
+
 
   state.crop.rect = {
     x: finalX,
@@ -400,221 +407,116 @@ function updateCropRect(currentPos) {
   };
 }
 
+
 function resizeCropRect(currentPos) {
   const {
     initialRect,
-    initialMouseX,
-    initialMouseY,
     activeHandle,
     aspectRatio
   } = state.crop;
   if (!initialRect || !activeHandle) return;
 
-  let {
-    x,
-    y,
-    w,
-    h
-  } = initialRect;
-  let newX = x,
-    newY = y,
-    newW = w,
-    newH = h;
+  let fixedX, fixedY; // The point that should remain constant
+  let currentX = currentPos.x;
+  let currentY = currentPos.y;
 
-  // Determine fixed point (opposite corner to active handle)
-  let fixedX, fixedY;
-  if (activeHandle.includes('e')) fixedX = x;
-  else if (activeHandle.includes('w')) fixedX = x + w;
-  else fixedX = x; // For N/S handles, X is not fixed
-
-  if (activeHandle.includes('s')) fixedY = y;
-  else if (activeHandle.includes('n')) fixedY = y + h;
-  else fixedY = y; // For E/W handles, Y is not fixed
-
-  let deltaX = currentPos.x - initialMouseX;
-  let deltaY = currentPos.y - initialMouseY;
-
-  // Calculate new width/height based on handle
+  // Determine the fixed point (opposite corner of the handle being dragged)
   switch (activeHandle) {
     case 'nw':
-      newX = x + deltaX;
-      newY = y + deltaY;
-      newW = w - deltaX;
-      newH = h - deltaY;
+      fixedX = initialRect.x + initialRect.w;
+      fixedY = initialRect.y + initialRect.h;
       break;
     case 'n':
-      newY = y + deltaY;
-      newH = h - deltaY;
+      fixedX = initialRect.x; // Keep original X
+      fixedY = initialRect.y + initialRect.h;
+      currentX = initialRect.x + initialRect.w; // Force currentX to maintain original width behavior
       break;
     case 'ne':
-      newY = y + deltaY;
-      newW = w + deltaX;
-      newH = h - deltaY;
+      fixedX = initialRect.x;
+      fixedY = initialRect.y + initialRect.h;
       break;
     case 'e':
-      newW = w + deltaX;
+      fixedX = initialRect.x;
+      fixedY = initialRect.y; // Keep original Y
+      currentY = initialRect.y + initialRect.h; // Force currentY to maintain original height behavior
       break;
     case 'se':
-      newW = w + deltaX;
-      newH = h + deltaY;
+      fixedX = initialRect.x;
+      fixedY = initialRect.y;
       break;
     case 's':
-      newH = h + deltaY;
+      fixedX = initialRect.x; // Keep original X
+      fixedY = initialRect.y;
+      currentX = initialRect.x + initialRect.w; // Force currentX to maintain original width behavior
       break;
     case 'sw':
-      newX = x + deltaX;
-      newW = w - deltaX;
-      newH = h + deltaY;
+      fixedX = initialRect.x + initialRect.w;
+      fixedY = initialRect.y;
       break;
     case 'w':
-      newX = x + deltaX;
-      newW = w - deltaX;
+      fixedX = initialRect.x + initialRect.w;
+      fixedY = initialRect.y; // Keep original Y
+      currentY = initialRect.y + initialRect.h; // Force currentY to maintain original height behavior
       break;
+    default:
+      return;
   }
 
-  // Ensure positive width/height
-  if (newW < 0) {
-    newX += newW;
-    newW = -newW;
+  let w_raw = currentX - fixedX;
+  let h_raw = currentY - fixedY;
+
+  // For N/S handles, the width should maintain its initial value unless aspect ratio demands change
+  if (activeHandle === 'n' || activeHandle === 's') {
+    w_raw = initialRect.w * Math.sign(w_raw || 1); // Maintain initial width magnitude, but respect sign
   }
-  if (newH < 0) {
-    newY += newH;
-    newH = -newH;
+  // For E/W handles, the height should maintain its initial value unless aspect ratio demands change
+  if (activeHandle === 'e' || activeHandle === 'w') {
+    h_raw = initialRect.h * Math.sign(h_raw || 1); // Maintain initial height magnitude, but respect sign
   }
 
-  // Apply aspect ratio
+
+  // Apply aspect ratio if active
   if (aspectRatio !== 'free') {
-    let ratioW, ratioH;
-    switch (aspectRatio) {
-      case 'square':
-        ratioW = 1;
-        ratioH = 1;
-        break;
-      case '4:3':
-        ratioW = 4;
-        ratioH = 3;
-        break;
-      case '16:9':
-        ratioW = 16;
-        ratioH = 9;
-        break;
-      default:
-        return;
-    }
+    const [ratioW, ratioH] = getAspectRatioNums(aspectRatio);
     const targetRatio = ratioW / ratioH;
 
-    // Recalculate based on fixed point and mouse position for accurate ratio
-    let currentXFromFixed, currentYFromFixed;
-
-    // Adjust currentPos based on initial mouse position relative to fixed point
-    const mouseXRatio = (currentPos.x - initialMouseX);
-    const mouseYRatio = (currentPos.y - initialMouseY);
-
-    let newAspectW = initialRect.w;
-    let newAspectH = initialRect.h;
-
-    switch (activeHandle) {
-      case 'nw':
-        newAspectW = initialRect.w - mouseXRatio;
-        newAspectH = initialRect.h - mouseYRatio;
-        break;
-      case 'n':
-        newAspectH = initialRect.h - mouseYRatio;
-        break;
-      case 'ne':
-        newAspectW = initialRect.w + mouseXRatio;
-        newAspectH = initialRect.h - mouseYRatio;
-        break;
-      case 'e':
-        newAspectW = initialRect.w + mouseXRatio;
-        break;
-      case 'se':
-        newAspectW = initialRect.w + mouseXRatio;
-        newAspectH = initialRect.h + mouseYRatio;
-        break;
-      case 's':
-        newAspectH = initialRect.h + mouseYRatio;
-        break;
-      case 'sw':
-        newAspectW = initialRect.w - mouseXRatio;
-        newAspectH = initialRect.h + mouseYRatio;
-        break;
-      case 'w':
-        newAspectW = initialRect.w - mouseXRatio;
-        break;
-    }
-
-    // Apply ratio based on which dimension changed most
-    if (Math.abs(newAspectW) > Math.abs(newAspectH * targetRatio)) {
-      newAspectH = newAspectW / targetRatio;
-    } else {
-      newAspectW = newAspectH * targetRatio;
-    }
-
-    // Now recalculate x, y, w, h considering the fixed point
-    switch (activeHandle) {
-      case 'nw':
-        newX = initialRect.x + initialRect.w - newAspectW;
-        newY = initialRect.y + initialRect.h - newAspectH;
-        newW = newAspectW;
-        newH = newAspectH;
-        break;
-      case 'n':
-        newX = initialRect.x;
-        newY = initialRect.y + initialRect.h - newAspectH;
-        newW = initialRect.w;
-        newH = newAspectH;
-        break;
-      case 'ne':
-        newX = initialRect.x;
-        newY = initialRect.y + initialRect.h - newAspectH;
-        newW = newAspectW;
-        newH = newAspectH;
-        break;
-      case 'e':
-        newX = initialRect.x;
-        newY = initialRect.y;
-        newW = newAspectW;
-        newH = initialRect.h;
-        break;
-      case 'se':
-        newX = initialRect.x;
-        newY = initialRect.y;
-        newW = newAspectW;
-        newH = newAspectH;
-        break;
-      case 's':
-        newX = initialRect.x;
-        newY = initialRect.y;
-        newW = initialRect.w;
-        newH = newAspectH;
-        break;
-      case 'sw':
-        newX = initialRect.x + initialRect.w - newAspectW;
-        newY = initialRect.y;
-        newW = newAspectW;
-        newH = newAspectH;
-        break;
-      case 'w':
-        newX = initialRect.x + initialRect.w - newAspectW;
-        newY = initialRect.y;
-        newW = newAspectW;
-        newH = initialRect.h;
-        break;
+    // Prioritize the dimension that is being actively dragged (for edge handles)
+    // or the dominant change (for corner handles)
+    if (activeHandle.includes('e') || activeHandle.includes('w')) { // horizontal drag
+      h_raw = w_raw / targetRatio;
+    } else if (activeHandle.includes('n') || activeHandle.includes('s')) { // vertical drag
+      w_raw = h_raw * targetRatio;
+    } else { // corner drag, pick dominant axis
+      if (Math.abs(w_raw) / targetRatio > Math.abs(h_raw)) { // width change is dominant
+        h_raw = Math.sign(h_raw) * (Math.abs(w_raw) / targetRatio);
+      } else { // height change is dominant
+        w_raw = Math.sign(w_raw) * (Math.abs(h_raw) * targetRatio);
+      }
     }
   }
 
+  // Final rectangle calculations, ensuring positive width/height
+  let finalX = Math.min(fixedX, fixedX + w_raw);
+  let finalY = Math.min(fixedY, fixedY + h_raw);
+  let finalW = Math.abs(w_raw);
+  let finalH = Math.abs(h_raw);
+
   // Ensure minimum size
-  newW = Math.max(1, newW);
-  newH = Math.max(1, newH);
+  finalW = Math.max(1, finalW);
+  finalH = Math.max(1, finalH);
+
+  // Clamp to canvas boundaries
+  finalX = Math.max(0, Math.min(finalX, state.width - finalW));
+  finalY = Math.max(0, Math.min(finalY, state.height - finalH));
 
   state.crop.rect = {
-    x: newX,
-    y: newY,
-    w: newW,
-    h: newH
+    x: finalX,
+    y: finalY,
+    w: finalW,
+    h: finalH
   };
 }
+
 
 function getHandleAtPoint(pos) {
   if (!state.crop.rect) return null;
@@ -749,12 +651,14 @@ function setCropCursor(e) {
     cropOverlay.style.cursor = cursors[handle];
   } else if (state.crop.rect && pos.x >= state.crop.rect.x && pos.x <= state.crop.rect.x + state.crop.rect.w &&
     pos.y >= state.crop.rect.y && pos.y <= state.crop.rect.y + state.crop.rect.h) {
-    // Inside crop rect but not on a handle, could be 'move' for future
-    cropOverlay.style.cursor = 'move'; // Or 'crosshair' to indicate new selection
+    // Inside crop rect but not on a handle, set to move cursor
+    cropOverlay.style.cursor = 'move';
   } else {
+    // Outside any rect or handle, for drawing a new selection
     cropOverlay.style.cursor = 'crosshair';
   }
 }
+
 
 function applyCrop() {
   if (!state.crop.rect || state.crop.rect.w < 1) return;
@@ -783,9 +687,9 @@ function applyCrop() {
 
 function exitCropMode() {
   state.crop.rect = null;
-  state.crop.start = null;
   state.crop.isDragging = false;
   state.crop.isResizing = false;
+  state.crop.isMoving = false; // Reset move state
   state.crop.activeHandle = null;
   state.crop.aspectRatio = 'free'; // Reset aspect ratio
   cropCtx.clearRect(0, 0, state.width, state.height);
@@ -794,6 +698,7 @@ function exitCropMode() {
   cropOverlay.style.cursor = 'default'; // Reset cursor
   updateUI(); // To update tool and ratio buttons
 }
+
 
 function updateUI() {
   tools.forEach(t => {
@@ -900,18 +805,63 @@ cropRatioButtons.forEach(button => {
     state.crop.aspectRatio = button.dataset.ratio;
     // Re-adjust existing crop rect if aspect ratio changes
     if (state.crop.rect) {
-      // Simulate a drag from current position to re-apply ratio
-      const currentMouse = { x: state.crop.rect.x + state.crop.rect.w, y: state.crop.rect.y + state.crop.rect.h };
-      const initialMouse = { x: state.crop.rect.x, y: state.crop.rect.y };
-      state.crop.initialMouseX = initialMouse.x;
-      state.crop.initialMouseY = initialMouse.y;
-      updateCropRect(currentMouse);
+      // Adjust dimensions to fit new ratio, keeping top-left fixed
+      let r = state.crop.rect;
+      let newW = r.w;
+      let newH = r.h;
+
+      if (state.crop.aspectRatio !== 'free') {
+        const [ratioW, ratioH] = getAspectRatioNums(state.crop.aspectRatio);
+        const targetRatio = ratioW / ratioH;
+
+        // Prioritize width or height based on current dimensions to fit the ratio
+        if (newW / targetRatio > newH) { // Current width is proportionally larger
+          newH = newW / targetRatio;
+        } else { // Current height is proportionally larger
+          newW = newH * targetRatio;
+        }
+      }
+      // Update rect with new dimensions, keeping x,y fixed
+      state.crop.rect = {
+        x: r.x,
+        y: r.y,
+        w: Math.max(1, newW),
+        h: Math.max(1, newH)
+      };
     }
     updateUI(); // Update active button style
     drawCropOverlay(); // Redraw overlay with new ratio
     updateCropDimensionsUI(); // Update dimensions
   };
 });
+
+function getAspectRatioNums(aspectRatio) {
+  if (aspectRatio === 'square') return [1, 1];
+  if (aspectRatio === '4:3') return [4, 3];
+  if (aspectRatio === '16:9') return [16, 9];
+  return [1, 1]; // Fallback for 'free' or invalid, though 'free' should bypass this.
+}
+
+function moveCropRect(currentPos) {
+  const {
+    initialRect,
+    initialMouseX,
+    initialMouseY
+  } = state.crop;
+  const dx = currentPos.x - initialMouseX;
+  const dy = currentPos.y - initialMouseY;
+
+  // New x, y based on initial rect position + mouse delta
+  let newX = initialRect.x + dx;
+  let newY = initialRect.y + dy;
+
+  // Clamp to canvas boundaries
+  newX = Math.max(0, Math.min(newX, state.width - initialRect.w));
+  newY = Math.max(0, Math.min(newY, state.height - initialRect.h));
+
+  state.crop.rect.x = newX;
+  state.crop.rect.y = newY;
+}
 
 
 
