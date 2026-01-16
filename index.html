@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Editor</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="editor-container">
+      <div class="toolbar">
+        <button class="tool-btn active" id="tool-move" title="Move Tool (V)">
+          <svg viewBox="0 0 24 24">
+            <path d="M10,9h4V6h3l-5-5-5,5h3v3zm-1,1H6V7l-5,5 5,5v-3h3v-4zm14,2l-5-5v3h-3v4h3v3l5-5zm-9,3h-4v3H7l5,5 5-5h-3v-3z"></path>
+          </svg>
+        </button>
+        <button class="tool-btn" id="tool-brush" title="Brush Tool (B)">
+          <svg viewBox="0 0 24 24">
+            <path d="M20.71 5.63l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12c.4-.4.4-1.03.01-1.42zM6.92 19L5 17.08l8.06-8.06 1.92 1.92L6.92 19z" />
+          </svg>
+        </button>
+        <button class="tool-btn" id="tool-eraser" title="Eraser Tool (E)">
+          <svg viewBox="0 0 24 24">
+            <path d="M15.14 3c-.51 0-1.02.2-1.41.59L2.59 14.73c-.78.77-.78 2.04 0 2.83L5.17 20c.78.78 2.05.78 2.83 0l11.03-11.03c.79-.79.79-2.04 0-2.83l-2.58-2.58c-.39-.39-.9-.59-1.41-.59zM17 11.17L9 19.17l-4.17-4.17L12.83 7 17 11.17z" />
+          </svg>
+        </button>
+        <button class="tool-btn" id="tool-text" title="Text Tool (T)">
+          <svg viewBox="0 0 24 24">
+            <path d="M2.5,4v3h5v12h3V7h5V4H2.5z M21.5,9h-9v3h3v7h3v-7h3V9z" />
+          </svg>
+        </button>
+        <button class="tool-btn" id="tool-crop" title="Crop Tool (C)">
+          <svg viewBox="0 0 24 24">
+            <path d="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z" />
+          </svg>
+        </button>
+      </div>
+      <div class="main-area">
+        <div class="top-bar">
+          <label class="btn secondary" style="margin-right:5px">
+            Open <input type="file" id="file-input" accept="image/*" style="display:none">
+          </label>
+          <button class="btn secondary" id="btn-new">New</button>
+          <button class="btn secondary" id="btn-resize">Resize</button>
+          <div style="width:1px; height:20px; background:#444; margin:0 10px;"></div>
+          <div class="tool-options">
+            <div id="opt-brush" class="option-group hidden">
+              <label>Color:</label>
+              <input type="color" id="brush-color" value="#ffffff">
+              <label>Size:</label>
+              <input type="range" id="brush-size" min="1" max="100" value="20">
+            </div>
+            <div id="opt-text" class="option-group hidden">
+              <label>Text:</label>
+              <input type="text" id="text-content" value="Hello World">
+              <label>Size:</label>
+              <input type="number" id="text-size" value="40" min="8" max="200">
+              <input type="color" id="text-color" value="#ffffff">
+              <span style="font-size:11px; color:#888; margin-left:5px;">Click image</span>
+            </div>
+
+            <div id="opt-crop" class="option-group hidden">
+              <div style="display:flex; align-items:center; gap:5px; margin-right: 10px;">
+                <label style="font-size:11px; color:#888;">Ratio:</label>
+                <button class="btn secondary crop-ratio-btn active" data-ratio="free">Free</button>
+                <button class="btn secondary crop-ratio-btn" data-ratio="square">1:1</button>
+                <button class="btn secondary crop-ratio-btn" data-ratio="4:3">4:3</button>
+                <button class="btn secondary crop-ratio-btn" data-ratio="16:9">16:9</button>
+              </div>
+              <span id="crop-dimensions" style="font-size:11px; color:#888; white-space:nowrap;">Draw rect to crop</span>
+              <button class="btn" id="btn-apply-crop">Apply</button>
+              <button class="btn secondary" id="btn-cancel-crop">Cancel</button>
+            </div>
+
+
+          </div>
+          <div class="zoom-controls">
+            <button class="icon-btn" id="zoom-out" title="Zoom Out">-</button>
+            <span class="zoom-label" id="zoom-val">100%</span>
+            <button class="icon-btn" id="zoom-in" title="Zoom In">+</button>
+            <button class="btn secondary" style="padding: 2px 8px; margin-left:5px; font-size:10px;" id="zoom-fit">Fit</button>
+          </div>
+          <button class="btn" id="btn-export">Export</button>
+        </div>
+        <div class="canvas-wrapper" id="canvas-wrapper">
+          <div id="canvas-stage">
+            <canvas id="crop-overlay"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="right-panel">
+        <div class="panel-header">Layer Properties</div>
+        <div style="padding:10px;">
+          <label style="display:block; margin-bottom:5px;">Opacity</label>
+          <input type="range" id="layer-opacity" min="0" max="100" value="100" style="width:100%">
+          <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border-color)">
+            <button class="btn secondary" id="btn-scale-layer" style="width:100%">Scale Layer</button>
+          </div>
+        </div>
+        <div class="panel-header" style="border-top:1px solid var(--border-color)">Layers</div>
+        <div class="layers-list" id="layers-list">
+        </div>
+        <div class="layer-controls">
+          <button class="icon-btn" id="btn-add-layer" title="New Layer">
+            <svg viewBox="0 0 24 24">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+            </svg>
+          </button>
+          <button class="icon-btn" id="btn-layer-up" title="Move Up">
+            <svg viewBox="0 0 24 24">
+              <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" />
+            </svg>
+          </button>
+          <button class="icon-btn" id="btn-layer-down" title="Move Down">
+            <svg viewBox="0 0 24 24">
+              <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
+            </svg>
+          </button>
+          <button class="icon-btn" id="btn-delete-layer" title="Delete Layer">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="dim-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h3 id="modal-title">New Image</h3>
+        <div id="dims-group">
+          <div class="form-row">
+            <label>Width (px)</label>
+            <input type="number" id="inp-width" value="800">
+          </div>
+          <div class="form-row">
+            <label>Height (px)</label>
+            <input type="number" id="inp-height" value="600">
+          </div>
+        </div>
+        <div id="scale-group" class="hidden">
+          <div class="form-row">
+            <label>Scale Percentage (%)</label>
+            <input type="number" id="inp-scale" value="100">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn secondary" id="btn-modal-cancel">Cancel</button>
+          <button class="btn" id="btn-modal-confirm">OK</button>
+        </div>
+      </div>
+    </div>
+    <script src="script.js" defer></script>
+  </body>
+</html>
