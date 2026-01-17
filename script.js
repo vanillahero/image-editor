@@ -13,7 +13,9 @@ const state = {
   text: {
     content: 'Hello World',
     size: 40,
-    color: '#ffffff'
+    color: '#ffffff',
+    fontFamily: 'sans-serif',
+    shadowEnabled: false
   },
   isDrawing: false,
   lastPos: {
@@ -47,6 +49,7 @@ const state = {
   maxHistory: 20,
   isUndoingRedoing: false
 };
+
 const stage = document.getElementById('canvas-stage');
 const wrapper = document.getElementById('canvas-wrapper');
 const cropOverlay = document.getElementById('crop-overlay');
@@ -297,11 +300,24 @@ function placeText(pos, ctx, layer) {
   if (!state.text.content) return;
   const x = pos.x - layer.x;
   const y = pos.y - layer.y;
-  ctx.font = `bold ${state.text.size}px sans-serif`;
+  ctx.font = `bold ${state.text.size}px ${state.text.fontFamily}`;
   ctx.fillStyle = state.text.color;
   ctx.textBaseline = 'middle';
+  if (state.text.shadowEnabled) {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 3;
+  }
   ctx.fillText(state.text.content, x, y);
+  if (state.text.shadowEnabled) {
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+  }
 }
+
 
 function handleCropStart(e) {
   if (!e.target.closest('#canvas-stage')) return;
@@ -669,7 +685,11 @@ function updateUI() {
   });
   document.querySelectorAll('.option-group').forEach(el => el.classList.add('hidden'));
   if (state.tool === 'brush' || state.tool === 'eraser') document.getElementById('opt-brush').classList.remove('hidden');
-  if (state.tool === 'text') document.getElementById('opt-text').classList.remove('hidden');
+  if (state.tool === 'text') {
+    document.getElementById('opt-text').classList.remove('hidden');
+    document.getElementById('text-font-family').value = state.text.fontFamily;
+    document.getElementById('text-shadow-enabled').checked = state.text.shadowEnabled;
+  }
   if (state.tool === 'crop') {
     document.getElementById('opt-crop').classList.remove('hidden');
     cropRatioButtons.forEach(btn => {
@@ -682,6 +702,7 @@ function updateUI() {
   }
   updateUndoRedoButtons();
 }
+
 
 function updateLayersUI() {
   layersList.innerHTML = '';
@@ -741,7 +762,12 @@ document.getElementById('brush-size').oninput = (e) => state.brush.size = e.targ
 document.getElementById('brush-color').oninput = (e) => state.brush.color = e.target.value;
 document.getElementById('text-content').oninput = (e) => state.text.content = e.target.value;
 document.getElementById('text-size').oninput = (e) => state.text.size = e.target.value;
+
 document.getElementById('text-color').oninput = (e) => state.text.color = e.target.value;
+document.getElementById('text-font-family').onchange = (e) => state.text.fontFamily = e.target.value;
+document.getElementById('text-shadow-enabled').onchange = (e) => state.text.shadowEnabled = e.target.checked;
+
+
 document.getElementById('zoom-in').onclick = () => setZoom(state.zoom + 0.1);
 document.getElementById('zoom-out').onclick = () => setZoom(state.zoom - 0.1);
 document.getElementById('zoom-fit').onclick = fitToScreen;
