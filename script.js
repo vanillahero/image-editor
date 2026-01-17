@@ -48,31 +48,43 @@ const wrapper = document.getElementById('canvas-wrapper');
 const cropOverlay = document.getElementById('crop-overlay');
 const cropCtx = cropOverlay.getContext('2d');
 const layersList = document.getElementById('layers-list');
+
 const cropDimensionsSpan = document.getElementById('crop-dimensions');
+const projectInput = document.getElementById('project-input');
 const cropRatioButtons = document.querySelectorAll('.crop-ratio-btn');
+
+
 const HANDLE_SIZE = 8;
 const tools = ['move', 'brush', 'eraser', 'text', 'crop'];
 
 function init(w = 800, h = 600) {
-  state.isUndoingRedoing = true;
+  state.isUndoingRedoing = true; // Prevent saving initial state to undo history
   state.undoStack = [];
   state.redoStack = [];
+
   setCanvasSize(w, h);
+  state.layers.forEach(layer => layer.canvas.remove()); // Clear any existing layers
   state.layers = [];
   state.nextLayerId = 1;
+
   const overlay = document.getElementById('crop-overlay');
-  stage.innerHTML = '';
+  stage.innerHTML = ''; // Clear stage content
   stage.appendChild(overlay);
+
   addLayer("Background");
   const bg = state.layers[0];
   bg.ctx.fillStyle = "white";
   bg.ctx.fillRect(0, 0, state.width, state.height);
+  setActiveLayer(bg.id); // Ensure background is active
+
   setZoom(1.0);
   updateUI();
   exitCropMode();
+
   state.isUndoingRedoing = false;
-  saveState();
+  saveState(); // Save initial state to undo history
 }
+
 
 function setCanvasSize(w, h) {
   state.width = w;
@@ -698,6 +710,7 @@ function updateLayersUI() {
   refreshLayerZIndex();
 }
 
+
 function setTool(t) {
   state.tool = t;
   if (t === 'crop') {
@@ -722,6 +735,9 @@ function setTool(t) {
   }
   updateUI();
 }
+
+
+
 document.getElementById('tool-move').onclick = () => setTool('move');
 document.getElementById('tool-brush').onclick = () => setTool('brush');
 document.getElementById('tool-eraser').onclick = () => setTool('eraser');
@@ -735,6 +751,7 @@ document.getElementById('text-color').oninput = (e) => state.text.color = e.targ
 document.getElementById('zoom-in').onclick = () => setZoom(state.zoom + 0.1);
 document.getElementById('zoom-out').onclick = () => setZoom(state.zoom - 0.1);
 document.getElementById('zoom-fit').onclick = fitToScreen;
+
 document.getElementById('layer-opacity').oninput = (e) => {
   const l = getActiveLayer();
   if (l) {
@@ -743,6 +760,8 @@ document.getElementById('layer-opacity').oninput = (e) => {
     l.canvas.style.opacity = l.opacity;
   }
 };
+
+
 document.getElementById('btn-add-layer').onclick = () => addLayer();
 document.getElementById('btn-delete-layer').onclick = deleteLayer;
 document.getElementById('btn-layer-up').onclick = () => moveLayerOrder(1);
@@ -875,6 +894,7 @@ document.getElementById('btn-scale-layer').onclick = () => {
   modal.classList.remove('hidden');
 };
 document.getElementById('btn-modal-cancel').onclick = () => modal.classList.add('hidden');
+
 document.getElementById('btn-modal-confirm').onclick = () => {
   if (modalAction === 'new') {
     const w = parseInt(document.getElementById('inp-width').value);
@@ -883,7 +903,7 @@ document.getElementById('btn-modal-confirm').onclick = () => {
       alert("Please enter valid width and height.");
       return;
     }
-    init(w, h);
+    init(w, h); // init already handles saveState
     fitToScreen();
   } else if (modalAction === 'resize') {
     const w = parseInt(document.getElementById('inp-width').value);
@@ -904,6 +924,10 @@ document.getElementById('btn-modal-confirm').onclick = () => {
       l.canvas.width = w;
       l.canvas.height = h;
       l.ctx = l.canvas.getContext('2d');
+      l.ctx.imageSmoothingEnabled = true; // Apply smoothing for resize
+      if (l.ctx.imageSmoothingQuality) {
+        l.ctx.imageSmoothingQuality = "high";
+      }
       l.ctx.drawImage(temp, 0, 0, w, h);
     });
   } else if (modalAction === 'scaleLayer') {
@@ -926,13 +950,19 @@ document.getElementById('btn-modal-confirm').onclick = () => {
         ctx.imageSmoothingQuality = "high";
       }
       ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
-      ctx.drawImage(temp, 0, 0, temp.width * scale, temp.height * scale);
+      // Recalculate position to center the scaled image
+      const newWidth = temp.width * scale;
+      const newHeight = temp.height * scale;
+      const startX = (layer.canvas.width - newWidth) / 2;
+      const startY = (layer.canvas.height - newHeight) / 2;
+      ctx.drawImage(temp, startX, startY, newWidth, newHeight);
       ctx.restore();
     }
   }
   modal.classList.add('hidden');
   updateUndoRedoButtons();
 };
+
 
 function saveState() {
   if (state.isUndoingRedoing) return;
@@ -959,48 +989,80 @@ function saveState() {
   updateUndoRedoButtons();
 }
 
-function restoreState(snapshot) {
+async function _applyStateSnapshot(snapshot, isProjectLoad = false) {
   state.isUndoingRedoing = true;
+
+  // Update canvas dimensions
+  state.width = snapshot.width;
+  state.height = snapshot.height;
   setCanvasSize(snapshot.width, snapshot.height);
+
   setZoom(snapshot.zoom);
+
+  // Clear existing layers from DOM and state
   state.layers.forEach(layer => layer.canvas.remove());
   state.layers = [];
-  snapshot.layers.forEach(savedLayer => {
-    const canvas = document.createElement('canvas');
-    canvas.width = state.width;
-    canvas.height = state.height;
-    canvas.id = `layer-${savedLayer.id}`;
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0);
-    };
-    img.src = savedLayer.imageDataURL;
-    const layer = {
-      id: savedLayer.id,
-      name: savedLayer.name,
-      canvas,
-      ctx,
-      visible: savedLayer.visible,
-      opacity: savedLayer.opacity,
-      x: savedLayer.x,
-      y: savedLayer.y
-    };
-    state.layers.push(layer);
-    stage.insertBefore(canvas, cropOverlay);
-    layer.canvas.style.opacity = layer.opacity;
-    layer.canvas.style.display = layer.visible ? 'block' : 'none';
-    layer.canvas.style.transform = `translate(${layer.x}px, ${layer.y}px)`;
+
+  // Reconstruct layers asynchronously
+  const layerPromises = snapshot.layers.map(savedLayer => {
+    return new Promise(resolve => {
+      const canvas = document.createElement('canvas');
+      canvas.width = snapshot.width; // Use project's width/height, not current state's
+      canvas.height = snapshot.height;
+      canvas.id = `layer-${savedLayer.id}`;
+      const ctx = canvas.getContext('2d');
+
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0);
+        const layer = {
+          id: savedLayer.id,
+          name: savedLayer.name,
+          canvas,
+          ctx,
+          visible: savedLayer.visible,
+          opacity: savedLayer.opacity,
+          x: savedLayer.x,
+          y: savedLayer.y
+        };
+        state.layers.push(layer);
+        stage.insertBefore(canvas, cropOverlay);
+        layer.canvas.style.opacity = layer.opacity;
+        layer.canvas.style.display = layer.visible ? 'block' : 'none';
+        layer.canvas.style.transform = `translate(${layer.x}px, ${layer.y}px)`;
+        resolve();
+      };
+      img.onerror = () => {
+        console.error(`Failed to load image for layer ${savedLayer.name}`);
+        resolve(); // Still resolve to not block Promise.all
+      };
+      img.src = savedLayer.imageDataURL;
+    });
   });
+
+  await Promise.all(layerPromises);
+
+  // Sort layers by ID before applying active state for proper Z-index if they load out of order
+  state.layers.sort((a, b) => a.id - b.id);
+  refreshLayerZIndex();
+
+  if (isProjectLoad) {
+    state.nextLayerId = snapshot.nextLayerId || (state.layers.length > 0 ? Math.max(...state.layers.map(l => l.id)) + 1 : 1);
+    state.undoStack = [];
+    state.redoStack = [];
+    saveState(); // Save the loaded state as the first undoable state
+  }
+
   state.activeLayerId = snapshot.activeLayerId;
+  state.isUndoingRedoing = false;
+
   updateLayersUI();
   updateUI();
-  drawCropOverlay();
+  drawCropOverlay(); // Ensure crop overlay is redrawn if tool is crop
   fitToScreen();
-  setTool(state.tool);
-  state.isUndoingRedoing = false;
-  updateUndoRedoButtons();
+  setTool(state.tool); // Re-apply current tool, esp. for crop/text cursor/overlay
 }
+
 
 function undo() {
   if (state.undoStack.length < 2) return;
@@ -1022,8 +1084,9 @@ function undo() {
   state.redoStack.push(currentState);
   state.undoStack.pop();
   const previousState = state.undoStack[state.undoStack.length - 1];
-  restoreState(previousState);
+  _applyStateSnapshot(previousState);
 }
+
 
 function redo() {
   if (state.redoStack.length === 0) return;
@@ -1044,8 +1107,62 @@ function redo() {
   };
   state.undoStack.push(currentState);
   const nextState = state.redoStack.pop();
-  restoreState(nextState);
+  _applyStateSnapshot(nextState);
 }
+
+function saveProject() {
+  const projectData = {
+    width: state.width,
+    height: state.height,
+    zoom: state.zoom,
+    activeLayerId: state.activeLayerId,
+    nextLayerId: state.nextLayerId, // Save for correct future layer IDs
+    layers: state.layers.map(layer => ({
+      id: layer.id,
+      name: layer.name,
+      x: layer.x,
+      y: layer.y,
+      opacity: layer.opacity,
+      visible: layer.visible,
+      imageDataURL: layer.canvas.toDataURL()
+    }))
+  };
+
+  const json = JSON.stringify(projectData, null, 2);
+  const blob = new Blob([json], {
+    type: 'application/json'
+  });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'project.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function openProjectFile(file) {
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const loadedProjectData = JSON.parse(e.target.result);
+      await _applyStateSnapshot(loadedProjectData, true); // true indicates it's a project load
+      console.log("Project loaded successfully.");
+    } catch (error) {
+      console.error("Failed to load project:", error);
+      alert("Failed to load project. The file might be corrupted or not a valid project file.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('btn-save-project').onclick = saveProject;
+projectInput.onchange = (e) => openProjectFile(e.target.files[0]);
+
 
 function updateUndoRedoButtons() {
   document.getElementById('btn-undo').disabled = state.undoStack.length <= 1;
