@@ -37,7 +37,6 @@
         </button>
       </div>
       <div class="main-area">
-
         <div class="top-bar">
           <div class="top-bar-row">
             <label class="btn secondary">
@@ -54,7 +53,6 @@
             <div class="divider"></div>
             <button class="btn secondary" id="btn-undo" title="Undo (Ctrl+Z)" disabled>Undo</button>
             <button class="btn secondary" id="btn-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
-            
             <div class="zoom-controls" style="margin-left: auto;">
               <button class="icon-btn" id="zoom-out" title="Zoom Out">-</button>
               <span class="zoom-label" id="zoom-val">100%</span>
@@ -64,7 +62,6 @@
             </div>
             <button class="btn" id="btn-export">Export</button>
           </div>
-
           <div class="top-bar-row tool-options">
             <div id="opt-brush" class="option-group hidden">
               <label style="font-size:11px; color:#888;">Size:</label>
@@ -72,7 +69,6 @@
               <label style="font-size:11px; color:#888;">Color:</label>
               <input type="color" id="brush-color" value="#ffffff">
             </div>
-
             <div id="opt-text" class="option-group hidden">
               <input type="text" id="text-content" value="Hello World" style="width:100px;">
               <label style="font-size:11px; color:#888;">Size:</label>
@@ -81,28 +77,27 @@
               <input type="color" id="text-color" value="#ffffff">
               <label style="font-size:11px; color:#888;">Font:</label>
               <select id="text-font-family" style="background:var(--input-bg); color:var(--text-color); border:1px solid var(--border-color); padding:4px; border-radius:2px;">
-                  <option value="Arial">Arial</option>
-                  <option value="Verdana">Verdana</option>
-                  <option value="Helvetica">Helvetica</option>
-                  <option value="Tahoma">Tahoma</option>
-                  <option value="Trebuchet MS">Trebuchet MS</option>
-                  <option value="Times New Roman">Times New Roman</option>
-                  <option value="Georgia">Georgia</option>
-                  <option value="Garamond">Garamond</option>
-                  <option value="Courier New">Courier New</option>
-                  <option value="Brush Script MT">Brush Script MT</option>
-                  <option value="sans-serif">Sans-Serif</option>
-                  <option value="serif">Serif</option>
-                  <option value="monospace">Monospace</option>
-                  <option value="cursive">Cursive</option>
-                  <option value="fantasy">Fantasy</option>
+                <option value="Arial">Arial</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Helvetica">Helvetica</option>
+                <option value="Tahoma">Tahoma</option>
+                <option value="Trebuchet MS">Trebuchet MS</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Garamond">Garamond</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Brush Script MT">Brush Script MT</option>
+                <option value="sans-serif">Sans-Serif</option>
+                <option value="serif">Serif</option>
+                <option value="monospace">Monospace</option>
+                <option value="cursive">Cursive</option>
+                <option value="fantasy">Fantasy</option>
               </select>
               <div style="flex-direction: row; align-items: center;">
-                  <input type="checkbox" id="text-shadow-enabled" style="width:auto; margin-right: 5px;">
-                  <label for="text-shadow-enabled" style="margin-bottom:0;">Shadow</label>
+                <input type="checkbox" id="text-shadow-enabled" style="width:auto; margin-right: 5px;">
+                <label for="text-shadow-enabled" style="margin-bottom:0;">Shadow</label>
               </div>
             </div>
-
             <div id="opt-crop" class="option-group hidden">
               <div class="crop-ratio-group">
                 <label style="font-size:11px; color:#888;">Ratio:</label>
@@ -115,7 +110,6 @@
               <button class="btn" id="btn-apply-crop">Apply</button>
               <button class="btn secondary" id="btn-cancel-crop">Cancel</button>
             </div>
-
             <div id="opt-filters" class="option-group hidden">
               <label style="font-size:11px; color:#888;">Brightness:</label>
               <input type="range" id="filter-light-slider" min="0" max="200" value="100">
@@ -126,7 +120,6 @@
             </div>
           </div>
         </div>
-
         <div class="canvas-wrapper" id="canvas-wrapper">
           <div id="canvas-stage">
             <canvas id="crop-overlay"></canvas>
