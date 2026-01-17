@@ -15,7 +15,7 @@ const state = {
     size: 40,
     color: '#ffffff'
   },
-  isDrawing: false, // General purpose flag for mousedown to mouseup
+  isDrawing: false,
   lastPos: {
     x: 0,
     y: 0
@@ -27,24 +27,22 @@ const state = {
     layerY: 0
   },
   crop: {
-    active: false, // Is crop tool selected
-    rect: null, // {x, y, w, h} - current crop rectangle
-    isDragging: false, // True if drawing initial selection or resizing
-    isResizing: false, // True if resizing handles
-    isMoving: false, // True if moving the entire crop rect
-    activeHandle: null, // 'nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w' or null
-    aspectRatio: 'free', // 'free' | 'square' | '4:3' | '16:9'
-    initialMouseX: 0, // Mouse X at start of drag/resize/move
-    initialMouseY: 0, // Mouse Y at start of drag/resize/move
-    initialRect: null // {x, y, w, h} - Rect at start of drag/resize/move
+    active: false,
+    rect: null,
+    isDragging: false,
+    isResizing: false,
+    isMoving: false,
+    activeHandle: null,
+    aspectRatio: 'free',
+    initialMouseX: 0,
+    initialMouseY: 0,
+    initialRect: null
   },
   undoStack: [],
   redoStack: [],
-  maxHistory: 20, // Max number of states to keep in history
-  isUndoingRedoing: false // Flag to prevent saving state during undo/redo operations
+  maxHistory: 20,
+  isUndoingRedoing: false
 };
-
-
 const stage = document.getElementById('canvas-stage');
 const wrapper = document.getElementById('canvas-wrapper');
 const cropOverlay = document.getElementById('crop-overlay');
@@ -52,18 +50,18 @@ const cropCtx = cropOverlay.getContext('2d');
 const layersList = document.getElementById('layers-list');
 const cropDimensionsSpan = document.getElementById('crop-dimensions');
 const cropRatioButtons = document.querySelectorAll('.crop-ratio-btn');
-const HANDLE_SIZE = 8; // Size of crop resize handles in canvas pixels
+const HANDLE_SIZE = 8;
 const tools = ['move', 'brush', 'eraser', 'text', 'crop'];
 
 function init(w = 800, h = 600) {
-  state.isUndoingRedoing = true; // Prevent saving initial state to undo stack twice
+  state.isUndoingRedoing = true;
   state.undoStack = [];
   state.redoStack = [];
   setCanvasSize(w, h);
   state.layers = [];
   state.nextLayerId = 1;
   const overlay = document.getElementById('crop-overlay');
-  stage.innerHTML = ''; // Clear existing layers except overlay
+  stage.innerHTML = '';
   stage.appendChild(overlay);
   addLayer("Background");
   const bg = state.layers[0];
@@ -71,12 +69,10 @@ function init(w = 800, h = 600) {
   bg.ctx.fillRect(0, 0, state.width, state.height);
   setZoom(1.0);
   updateUI();
-  exitCropMode(); // Reset crop state
+  exitCropMode();
   state.isUndoingRedoing = false;
-  saveState(); // Save the initial state
+  saveState();
 }
-
-
 
 function setCanvasSize(w, h) {
   state.width = w;
@@ -86,8 +82,6 @@ function setCanvasSize(w, h) {
   cropOverlay.width = w;
   cropOverlay.height = h;
 }
-
-
 window.addEventListener('paste', (e) => {
   const items = e.clipboardData.items;
   for (let item of items) {
@@ -97,7 +91,7 @@ window.addEventListener('paste', (e) => {
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
-          saveState(); // Save state before adding new layer
+          saveState();
           addLayer("Pasted Image", img);
         };
         img.src = event.target.result;
@@ -106,7 +100,6 @@ window.addEventListener('paste', (e) => {
     }
   }
 });
-
 
 function setZoom(lvl) {
   state.zoom = Math.max(0.1, Math.min(5.0, lvl));
@@ -164,13 +157,11 @@ function addLayer(name, sourceImage = null) {
   return layer;
 }
 
-
 function setActiveLayer(id) {
   state.activeLayerId = id;
   updateLayersUI();
-  updateUI(); // To update opacity slider
+  updateUI();
 }
-
 
 function getActiveLayer() {
   return state.layers.find(l => l.id === state.activeLayerId);
@@ -178,7 +169,7 @@ function getActiveLayer() {
 
 function deleteLayer() {
   if (state.layers.length <= 1) return alert("Cannot delete the last layer");
-  saveState(); // Save state before deleting
+  saveState();
   const idx = state.layers.findIndex(l => l.id === state.activeLayerId);
   const layer = state.layers[idx];
   layer.canvas.remove();
@@ -186,17 +177,15 @@ function deleteLayer() {
   setActiveLayer(state.layers[Math.max(0, idx - 1)].id);
 }
 
-
 function moveLayerOrder(dir) {
   const idx = state.layers.findIndex(l => l.id === state.activeLayerId);
   if ((dir === 1 && idx < state.layers.length - 1) || (dir === -1 && idx > 0)) {
-    saveState(); // Save state before reordering
+    saveState();
     [state.layers[idx], state.layers[idx + dir]] = [state.layers[idx + dir], state.layers[idx]];
     refreshLayerZIndex();
     updateLayersUI();
   }
 }
-
 
 function refreshLayerZIndex() {
   state.layers.forEach((l, idx) => {
@@ -211,24 +200,23 @@ function getMousePos(e) {
     y: (e.clientY - rect.top) / state.zoom
   };
 }
-
 stage.addEventListener('mousedown', e => {
   if (state.tool === 'crop') return handleCropStart(e);
   const layer = getActiveLayer();
   if (!layer || !layer.visible) return;
   const pos = getMousePos(e);
   if (state.tool === 'text') {
-    saveState(); // Save state before placing text
+    saveState();
     placeText(pos, layer.ctx, layer);
     return;
   }
   state.isDrawing = true;
   state.lastPos = pos;
   if (state.tool === 'brush' || state.tool === 'eraser') {
-    saveState(); // Save state at the start of a drawing stroke
+    saveState();
     draw(pos);
   } else if (state.tool === 'move') {
-    saveState(); // Save state at the start of a move operation
+    saveState();
     state.moveStart = {
       x: e.clientX,
       y: e.clientY,
@@ -237,7 +225,6 @@ stage.addEventListener('mousedown', e => {
     };
   }
 });
-
 window.addEventListener('mousemove', e => {
   if (state.tool === 'crop') return handleCropMove(e);
   if (!state.isDrawing) return;
@@ -256,19 +243,15 @@ window.addEventListener('mousemove', e => {
   }
 });
 window.addEventListener('mouseup', () => {
-  state.isDrawing = false; // General drawing/dragging ended
+  state.isDrawing = false;
   if (state.tool === 'crop') handleCropEnd();
 });
-
-
-// Cursor changes for crop tool
 cropOverlay.addEventListener('mousemove', setCropCursor);
 cropOverlay.addEventListener('mouseleave', () => {
   if (state.tool === 'crop' && !state.crop.isDragging) {
     cropOverlay.style.cursor = 'crosshair';
   }
 });
-
 wrapper.addEventListener('wheel', e => {
   if (e.ctrlKey) {
     e.preventDefault();
@@ -311,11 +294,9 @@ function placeText(pos, ctx, layer) {
 }
 
 function handleCropStart(e) {
-  if (!e.target.closest('#canvas-stage')) return; // Ensure click is on stage
+  if (!e.target.closest('#canvas-stage')) return;
   const pos = getMousePos(e);
-
   if (state.crop.rect) {
-    // Check if clicking a handle to resize
     const handle = getHandleAtPoint(pos);
     if (handle) {
       state.crop.isDragging = true;
@@ -324,12 +305,11 @@ function handleCropStart(e) {
       state.crop.activeHandle = handle;
       state.crop.initialMouseX = pos.x;
       state.crop.initialMouseY = pos.y;
-      state.crop.initialRect = { ...state.crop.rect
-      }; // Deep copy
+      state.crop.initialRect = {
+        ...state.crop.rect
+      };
       return;
     }
-
-    // Check if clicking inside existing rect (for moving)
     if (pos.x >= state.crop.rect.x && pos.x <= state.crop.rect.x + state.crop.rect.w &&
       pos.y >= state.crop.rect.y && pos.y <= state.crop.rect.y + state.crop.rect.h) {
       state.crop.isDragging = true;
@@ -337,13 +317,12 @@ function handleCropStart(e) {
       state.crop.isMoving = true;
       state.crop.initialMouseX = pos.x;
       state.crop.initialMouseY = pos.y;
-      state.crop.initialRect = { ...state.crop.rect
-      }; // Store rect's initial position
+      state.crop.initialRect = {
+        ...state.crop.rect
+      };
       return;
     }
   }
-
-  // If no rect, or clicking outside existing rect/handles, start new selection
   state.crop.isDragging = true;
   state.crop.isResizing = false;
   state.crop.isMoving = false;
@@ -355,38 +334,34 @@ function handleCropStart(e) {
     y: pos.y,
     w: 0,
     h: 0
-  }; // Reset rect for new selection
+  };
 }
-
 
 function handleCropMove(e) {
   if (!state.crop.isDragging) return;
   const pos = getMousePos(e);
-
   if (state.crop.isMoving) {
     moveCropRect(pos);
   } else if (state.crop.isResizing) {
     resizeCropRect(pos);
   } else {
-    updateCropRect(pos); // Initial selection
+    updateCropRect(pos);
   }
   drawCropOverlay();
   updateCropDimensionsUI();
 }
 
-
 function handleCropEnd() {
   state.crop.isDragging = false;
   state.crop.isResizing = false;
-  state.crop.isMoving = false; // Reset move state
+  state.crop.isMoving = false;
   state.crop.activeHandle = null;
   if (state.crop.rect && (state.crop.rect.w < 1 || state.crop.rect.h < 1)) {
-    state.crop.rect = null; // Clear if selection is too small
+    state.crop.rect = null;
   }
-  drawCropOverlay(); // Clear handles
+  drawCropOverlay();
   updateCropDimensionsUI();
 }
-
 
 function updateCropRect(currentPos) {
   const {
@@ -394,39 +369,29 @@ function updateCropRect(currentPos) {
     initialMouseY,
     aspectRatio
   } = state.crop;
-
   let x1 = initialMouseX;
   let y1 = initialMouseY;
   let x2 = currentPos.x;
   let y2 = currentPos.y;
-
   let w_raw = x2 - x1;
   let h_raw = y2 - y1;
-
   if (aspectRatio !== 'free') {
     const [ratioW, ratioH] = getAspectRatioNums(aspectRatio);
     const targetRatio = ratioW / ratioH;
-
-    // Apply aspect ratio, prioritizing the dimension with larger absolute change
     if (Math.abs(w_raw) / targetRatio > Math.abs(h_raw)) {
       h_raw = Math.sign(h_raw) * (Math.abs(w_raw) / targetRatio);
     } else {
       w_raw = Math.sign(w_raw) * (Math.abs(h_raw) * targetRatio);
     }
   }
-
   let finalX = Math.min(x1, x1 + w_raw);
   let finalY = Math.min(y1, y1 + h_raw);
   let finalW = Math.abs(w_raw);
   let finalH = Math.abs(h_raw);
-
-  // Clamp to canvas boundaries
   finalX = Math.max(0, Math.min(finalX, state.width - finalW));
   finalY = Math.max(0, Math.min(finalY, state.height - finalH));
-  finalW = Math.min(finalW, state.width - finalX); // Ensure width doesn't exceed canvas
-  finalH = Math.min(finalH, state.height - finalY); // Ensure height doesn't exceed canvas
-
-
+  finalW = Math.min(finalW, state.width - finalX);
+  finalH = Math.min(finalH, state.height - finalY);
   state.crop.rect = {
     x: finalX,
     y: finalY,
@@ -435,7 +400,6 @@ function updateCropRect(currentPos) {
   };
 }
 
-
 function resizeCropRect(currentPos) {
   const {
     initialRect,
@@ -443,21 +407,18 @@ function resizeCropRect(currentPos) {
     aspectRatio
   } = state.crop;
   if (!initialRect || !activeHandle) return;
-
-  let fixedX, fixedY; // The point that should remain constant
+  let fixedX, fixedY;
   let currentX = currentPos.x;
   let currentY = currentPos.y;
-
-  // Determine the fixed point (opposite corner of the handle being dragged)
   switch (activeHandle) {
     case 'nw':
       fixedX = initialRect.x + initialRect.w;
       fixedY = initialRect.y + initialRect.h;
       break;
     case 'n':
-      fixedX = initialRect.x; // Keep original X
+      fixedX = initialRect.x;
       fixedY = initialRect.y + initialRect.h;
-      currentX = initialRect.x + initialRect.w; // Force currentX to maintain original width behavior
+      currentX = initialRect.x + initialRect.w;
       break;
     case 'ne':
       fixedX = initialRect.x;
@@ -465,17 +426,17 @@ function resizeCropRect(currentPos) {
       break;
     case 'e':
       fixedX = initialRect.x;
-      fixedY = initialRect.y; // Keep original Y
-      currentY = initialRect.y + initialRect.h; // Force currentY to maintain original height behavior
+      fixedY = initialRect.y;
+      currentY = initialRect.y + initialRect.h;
       break;
     case 'se':
       fixedX = initialRect.x;
       fixedY = initialRect.y;
       break;
     case 's':
-      fixedX = initialRect.x; // Keep original X
+      fixedX = initialRect.x;
       fixedY = initialRect.y;
-      currentX = initialRect.x + initialRect.w; // Force currentX to maintain original width behavior
+      currentX = initialRect.x + initialRect.w;
       break;
     case 'sw':
       fixedX = initialRect.x + initialRect.w;
@@ -483,60 +444,43 @@ function resizeCropRect(currentPos) {
       break;
     case 'w':
       fixedX = initialRect.x + initialRect.w;
-      fixedY = initialRect.y; // Keep original Y
-      currentY = initialRect.y + initialRect.h; // Force currentY to maintain original height behavior
+      fixedY = initialRect.y;
+      currentY = initialRect.y + initialRect.h;
       break;
     default:
       return;
   }
-
   let w_raw = currentX - fixedX;
   let h_raw = currentY - fixedY;
-
-  // For N/S handles, the width should maintain its initial value unless aspect ratio demands change
   if (activeHandle === 'n' || activeHandle === 's') {
-    w_raw = initialRect.w * Math.sign(w_raw || 1); // Maintain initial width magnitude, but respect sign
+    w_raw = initialRect.w * Math.sign(w_raw || 1);
   }
-  // For E/W handles, the height should maintain its initial value unless aspect ratio demands change
   if (activeHandle === 'e' || activeHandle === 'w') {
-    h_raw = initialRect.h * Math.sign(h_raw || 1); // Maintain initial height magnitude, but respect sign
+    h_raw = initialRect.h * Math.sign(h_raw || 1);
   }
-
-
-  // Apply aspect ratio if active
   if (aspectRatio !== 'free') {
     const [ratioW, ratioH] = getAspectRatioNums(aspectRatio);
     const targetRatio = ratioW / ratioH;
-
-    // Prioritize the dimension that is being actively dragged (for edge handles)
-    // or the dominant change (for corner handles)
-    if (activeHandle.includes('e') || activeHandle.includes('w')) { // horizontal drag
+    if (activeHandle.includes('e') || activeHandle.includes('w')) {
       h_raw = w_raw / targetRatio;
-    } else if (activeHandle.includes('n') || activeHandle.includes('s')) { // vertical drag
+    } else if (activeHandle.includes('n') || activeHandle.includes('s')) {
       w_raw = h_raw * targetRatio;
-    } else { // corner drag, pick dominant axis
+    } else {
       if (Math.abs(w_raw) / targetRatio > Math.abs(h_raw)) { // width change is dominant
         h_raw = Math.sign(h_raw) * (Math.abs(w_raw) / targetRatio);
-      } else { // height change is dominant
+      } else {
         w_raw = Math.sign(w_raw) * (Math.abs(h_raw) * targetRatio);
       }
     }
   }
-
-  // Final rectangle calculations, ensuring positive width/height
   let finalX = Math.min(fixedX, fixedX + w_raw);
   let finalY = Math.min(fixedY, fixedY + h_raw);
   let finalW = Math.abs(w_raw);
   let finalH = Math.abs(h_raw);
-
-  // Ensure minimum size
   finalW = Math.max(1, finalW);
   finalH = Math.max(1, finalH);
-
-  // Clamp to canvas boundaries
   finalX = Math.max(0, Math.min(finalX, state.width - finalW));
   finalY = Math.max(0, Math.min(finalY, state.height - finalH));
-
   state.crop.rect = {
     x: finalX,
     y: finalY,
@@ -545,12 +489,10 @@ function resizeCropRect(currentPos) {
   };
 }
 
-
 function getHandleAtPoint(pos) {
   if (!state.crop.rect) return null;
   const r = state.crop.rect;
   const hs = HANDLE_SIZE / 2; // Half handle size for easier checks
-
   const handles = {
     nw: {
       x: r.x - hs,
@@ -593,7 +535,6 @@ function getHandleAtPoint(pos) {
       cursor: 'ew-resize'
     },
   };
-
   for (const handleName in handles) {
     const hRect = handles[handleName];
     if (pos.x >= hRect.x && pos.x <= hRect.x + HANDLE_SIZE &&
@@ -610,44 +551,33 @@ function drawCropOverlay() {
     updateCropDimensionsUI();
     return;
   }
-
   const r = state.crop.rect;
-  // Draw darkened overlay
   cropCtx.fillStyle = 'rgba(0,0,0,0.5)';
   cropCtx.fillRect(0, 0, state.width, state.height);
-
-  // Clear area for crop selection
   cropCtx.clearRect(r.x, r.y, r.w, r.h);
-
-  // Draw crop rectangle border
   cropCtx.strokeStyle = '#fff';
-  cropCtx.lineWidth = 2; // Fixed border width regardless of zoom for visibility
+  cropCtx.lineWidth = 2;
   cropCtx.strokeRect(r.x, r.y, r.w, r.h);
-
-  // Draw resize handles
-  if (!state.crop.isDragging) { // Only draw handles when not actively dragging them
+  if (!state.crop.isDragging) {
     cropCtx.fillStyle = '#fff';
     cropCtx.strokeStyle = '#000';
     cropCtx.lineWidth = 1;
-
     const hs = HANDLE_SIZE / 2;
     const handles = [
-      [r.x, r.y], // nw
+      [r.x, r.y],
       [r.x + r.w / 2, r.y], // n
-      [r.x + r.w, r.y], // ne
+      [r.x + r.w, r.y],
       [r.x + r.w, r.y + r.h / 2], // e
-      [r.x + r.w, r.y + r.h], // se
+      [r.x + r.w, r.y + r.h],
       [r.x + r.w / 2, r.y + r.h], // s
-      [r.x, r.y + r.h], // sw
+      [r.x, r.y + r.h],
       [r.x, r.y + r.h / 2] // w
     ];
-
     handles.forEach(p => {
       cropCtx.fillRect(p[0] - hs, p[1] - hs, HANDLE_SIZE, HANDLE_SIZE);
       cropCtx.strokeRect(p[0] - hs, p[1] - hs, HANDLE_SIZE, HANDLE_SIZE);
     });
   }
-
   updateCropDimensionsUI();
 }
 
@@ -660,11 +590,9 @@ function updateCropDimensionsUI() {
 }
 
 function setCropCursor(e) {
-  if (state.tool !== 'crop' || state.crop.isDragging) return; // Don't change cursor if not crop tool or already dragging
-
+  if (state.tool !== 'crop' || state.crop.isDragging) return;
   const pos = getMousePos(e);
   const handle = getHandleAtPoint(pos);
-
   if (handle) {
     const cursors = {
       nw: 'nwse-resize',
@@ -679,18 +607,15 @@ function setCropCursor(e) {
     cropOverlay.style.cursor = cursors[handle];
   } else if (state.crop.rect && pos.x >= state.crop.rect.x && pos.x <= state.crop.rect.x + state.crop.rect.w &&
     pos.y >= state.crop.rect.y && pos.y <= state.crop.rect.y + state.crop.rect.h) {
-    // Inside crop rect but not on a handle, set to move cursor
     cropOverlay.style.cursor = 'move';
   } else {
-    // Outside any rect or handle, for drawing a new selection
     cropOverlay.style.cursor = 'crosshair';
   }
 }
 
-
 function applyCrop() {
   if (!state.crop.rect || state.crop.rect.w < 1) return;
-  saveState(); // Save state before applying crop
+  saveState();
   const r = state.crop.rect;
   const newW = Math.round(r.w);
   const newH = Math.round(r.h);
@@ -714,21 +639,19 @@ function applyCrop() {
   fitToScreen();
 }
 
-
 function exitCropMode() {
   state.crop.rect = null;
   state.crop.isDragging = false;
   state.crop.isResizing = false;
-  state.crop.isMoving = false; // Reset move state
+  state.crop.isMoving = false;
   state.crop.activeHandle = null;
-  state.crop.aspectRatio = 'free'; // Reset aspect ratio
+  state.crop.aspectRatio = 'free';
   cropCtx.clearRect(0, 0, state.width, state.height);
-  updateCropDimensionsUI(); // Clear dimensions text
-  setTool('move'); // Always switch back to move tool
-  cropOverlay.style.cursor = 'default'; // Reset cursor
-  updateUI(); // To update tool and ratio buttons
+  updateCropDimensionsUI();
+  setTool('move');
+  cropOverlay.style.cursor = 'default';
+  updateUI();
 }
-
 
 function updateUI() {
   tools.forEach(t => {
@@ -739,20 +662,16 @@ function updateUI() {
   if (state.tool === 'text') document.getElementById('opt-text').classList.remove('hidden');
   if (state.tool === 'crop') {
     document.getElementById('opt-crop').classList.remove('hidden');
-    // Update active crop ratio button
     cropRatioButtons.forEach(btn => {
       btn.classList.toggle('active', btn.dataset.ratio === state.crop.aspectRatio);
     });
   }
-
   const active = getActiveLayer();
   if (active) {
     document.getElementById('layer-opacity').value = active.opacity * 100;
   }
-
   updateUndoRedoButtons();
 }
-
 
 function updateLayersUI() {
   layersList.innerHTML = '';
@@ -779,27 +698,25 @@ function updateLayersUI() {
   refreshLayerZIndex();
 }
 
-
-
 function setTool(t) {
   state.tool = t;
   if (t === 'crop') {
     cropOverlay.style.cursor = 'crosshair';
     state.crop.active = true;
-    if (state.crop.rect) { // Redraw if a rect already exists
+    if (state.crop.rect) {
       drawCropOverlay();
       updateCropDimensionsUI();
     }
   } else if (t === 'text') {
     cropOverlay.style.cursor = 'text';
-    state.crop.active = false; // Deactivate crop mode
-    state.crop.rect = null; // Clear crop rect if switching tools
+    state.crop.active = false;
+    state.crop.rect = null;
     cropCtx.clearRect(0, 0, state.width, state.height);
     updateCropDimensionsUI();
   } else {
     cropOverlay.style.cursor = 'default';
-    state.crop.active = false; // Deactivate crop mode
-    state.crop.rect = null; // Clear crop rect if switching tools
+    state.crop.active = false;
+    state.crop.rect = null;
     cropCtx.clearRect(0, 0, state.width, state.height);
     updateCropDimensionsUI();
   }
@@ -818,48 +735,37 @@ document.getElementById('text-color').oninput = (e) => state.text.color = e.targ
 document.getElementById('zoom-in').onclick = () => setZoom(state.zoom + 0.1);
 document.getElementById('zoom-out').onclick = () => setZoom(state.zoom - 0.1);
 document.getElementById('zoom-fit').onclick = fitToScreen;
-
 document.getElementById('layer-opacity').oninput = (e) => {
   const l = getActiveLayer();
   if (l) {
-    saveState(); // Save state before changing opacity
+    saveState();
     l.opacity = e.target.value / 100;
     l.canvas.style.opacity = l.opacity;
   }
 };
-
-
 document.getElementById('btn-add-layer').onclick = () => addLayer();
 document.getElementById('btn-delete-layer').onclick = deleteLayer;
 document.getElementById('btn-layer-up').onclick = () => moveLayerOrder(1);
 document.getElementById('btn-layer-down').onclick = () => moveLayerOrder(-1);
 document.getElementById('btn-apply-crop').onclick = applyCrop;
 document.getElementById('btn-cancel-crop').onclick = exitCropMode;
-
-// Crop aspect ratio buttons
 cropRatioButtons.forEach(button => {
   button.onclick = () => {
-    saveState(); // Save state before changing aspect ratio
+    saveState();
     state.crop.aspectRatio = button.dataset.ratio;
-    // Re-adjust existing crop rect if aspect ratio changes
     if (state.crop.rect) {
-      // Adjust dimensions to fit new ratio, keeping top-left fixed
       let r = state.crop.rect;
       let newW = r.w;
       let newH = r.h;
-
       if (state.crop.aspectRatio !== 'free') {
         const [ratioW, ratioH] = getAspectRatioNums(state.crop.aspectRatio);
         const targetRatio = ratioW / ratioH;
-
-        // Prioritize width or height based on current dimensions to fit the ratio
         if (newW / targetRatio > newH) { // Current width is proportionally larger
           newH = newW / targetRatio;
-        } else { // Current height is proportionally larger
+        } else {
           newW = newH * targetRatio;
         }
       }
-      // Update rect with new dimensions, keeping x,y fixed
       state.crop.rect = {
         x: r.x,
         y: r.y,
@@ -867,9 +773,9 @@ cropRatioButtons.forEach(button => {
         h: Math.max(1, newH)
       };
     }
-    updateUI(); // Update active button style
-    drawCropOverlay(); // Redraw overlay with new ratio
-    updateCropDimensionsUI(); // Update dimensions
+    updateUI();
+    drawCropOverlay();
+    updateCropDimensionsUI();
   };
 });
 
@@ -877,7 +783,7 @@ function getAspectRatioNums(aspectRatio) {
   if (aspectRatio === 'square') return [1, 1];
   if (aspectRatio === '4:3') return [4, 3];
   if (aspectRatio === '16:9') return [16, 9];
-  return [1, 1]; // Fallback for 'free' or invalid, though 'free' should bypass this.
+  return [1, 1];
 }
 
 function moveCropRect(currentPos) {
@@ -888,21 +794,13 @@ function moveCropRect(currentPos) {
   } = state.crop;
   const dx = currentPos.x - initialMouseX;
   const dy = currentPos.y - initialMouseY;
-
-  // New x, y based on initial rect position + mouse delta
   let newX = initialRect.x + dx;
   let newY = initialRect.y + dy;
-
-  // Clamp to canvas boundaries
   newX = Math.max(0, Math.min(newX, state.width - initialRect.w));
   newY = Math.max(0, Math.min(newY, state.height - initialRect.h));
-
   state.crop.rect.x = newX;
   state.crop.rect.y = newY;
 }
-
-
-
 const fileInput = document.getElementById('file-input');
 fileInput.onchange = (e) => {
   const file = e.target.files[0];
@@ -911,7 +809,7 @@ fileInput.onchange = (e) => {
   reader.onload = (evt) => {
     const img = new Image();
     img.onload = () => {
-      saveState(); // Save state before changing canvas or adding layer
+      saveState();
       if (state.layers.length === 1 && state.layers[0].name === "Background") {
         setCanvasSize(img.width, img.height);
         const bg = state.layers[0];
@@ -931,10 +829,6 @@ fileInput.onchange = (e) => {
   reader.readAsDataURL(file);
   fileInput.value = '';
 };
-
-
-
-
 document.getElementById('btn-export').onclick = () => {
   const exCanvas = document.createElement('canvas');
   exCanvas.width = state.width;
@@ -981,8 +875,6 @@ document.getElementById('btn-scale-layer').onclick = () => {
   modal.classList.remove('hidden');
 };
 document.getElementById('btn-modal-cancel').onclick = () => modal.classList.add('hidden');
-
-
 document.getElementById('btn-modal-confirm').onclick = () => {
   if (modalAction === 'new') {
     const w = parseInt(document.getElementById('inp-width').value);
@@ -991,7 +883,7 @@ document.getElementById('btn-modal-confirm').onclick = () => {
       alert("Please enter valid width and height.");
       return;
     }
-    init(w, h); // init() calls saveState() internally
+    init(w, h);
     fitToScreen();
   } else if (modalAction === 'resize') {
     const w = parseInt(document.getElementById('inp-width').value);
@@ -1000,7 +892,7 @@ document.getElementById('btn-modal-confirm').onclick = () => {
       alert("Please enter valid width and height.");
       return;
     }
-    saveState(); // Save state before resizing
+    saveState();
     const oldW = state.width;
     const oldH = state.height;
     setCanvasSize(w, h);
@@ -1022,7 +914,7 @@ document.getElementById('btn-modal-confirm').onclick = () => {
     }
     const layer = getActiveLayer();
     if (layer) {
-      saveState(); // Save state before scaling layer
+      saveState();
       const temp = document.createElement('canvas');
       temp.width = layer.canvas.width;
       temp.height = layer.canvas.height;
@@ -1041,10 +933,9 @@ document.getElementById('btn-modal-confirm').onclick = () => {
   modal.classList.add('hidden');
   updateUndoRedoButtons();
 };
-function saveState() {
-  if (state.isUndoingRedoing) return; // Don't save state if we are currently undoing/redoing
 
-  // Capture current state of layers, canvas dimensions, active layer etc.
+function saveState() {
+  if (state.isUndoingRedoing) return;
   const snapshot = {
     width: state.width,
     height: state.height,
@@ -1060,39 +951,31 @@ function saveState() {
       imageDataURL: layer.canvas.toDataURL()
     }))
   };
-
   state.undoStack.push(snapshot);
   if (state.undoStack.length > state.maxHistory) {
-    state.undoStack.shift(); // Remove the oldest state
+    state.undoStack.shift();
   }
-  state.redoStack = []; // Clear redo stack on new action
+  state.redoStack = [];
   updateUndoRedoButtons();
 }
 
 function restoreState(snapshot) {
-  state.isUndoingRedoing = true; // Set flag to prevent saving
+  state.isUndoingRedoing = true;
   setCanvasSize(snapshot.width, snapshot.height);
   setZoom(snapshot.zoom);
-
-  // Clear existing layers from stage
   state.layers.forEach(layer => layer.canvas.remove());
   state.layers = [];
-
-  // Restore layers
   snapshot.layers.forEach(savedLayer => {
     const canvas = document.createElement('canvas');
     canvas.width = state.width;
     canvas.height = state.height;
     canvas.id = `layer-${savedLayer.id}`;
     const ctx = canvas.getContext('2d');
-
     const img = new Image();
     img.onload = () => {
       ctx.drawImage(img, 0, 0);
     };
     img.src = savedLayer.imageDataURL;
-
-
     const layer = {
       id: savedLayer.id,
       name: savedLayer.name,
@@ -1104,28 +987,23 @@ function restoreState(snapshot) {
       y: savedLayer.y
     };
     state.layers.push(layer);
-    stage.insertBefore(canvas, cropOverlay); // Insert before overlay
+    stage.insertBefore(canvas, cropOverlay);
     layer.canvas.style.opacity = layer.opacity;
     layer.canvas.style.display = layer.visible ? 'block' : 'none';
     layer.canvas.style.transform = `translate(${layer.x}px, ${layer.y}px)`;
   });
-
   state.activeLayerId = snapshot.activeLayerId;
   updateLayersUI();
   updateUI();
-  drawCropOverlay(); // Clear or redraw crop overlay if needed
-  fitToScreen(); // Re-fit if canvas size changed
-
-  // Reset tool as restoration might change current tool context
+  drawCropOverlay();
+  fitToScreen();
   setTool(state.tool);
-
-  state.isUndoingRedoing = false; // Reset flag
+  state.isUndoingRedoing = false;
   updateUndoRedoButtons();
 }
 
 function undo() {
-  if (state.undoStack.length < 2) return; // Need at least 2 states to undo (current state + previous)
-
+  if (state.undoStack.length < 2) return;
   const currentState = {
     width: state.width,
     height: state.height,
@@ -1141,16 +1019,14 @@ function undo() {
       imageDataURL: layer.canvas.toDataURL()
     }))
   };
-  state.redoStack.push(currentState); // Save current state to redo stack
-
-  state.undoStack.pop(); // Remove current state from undo stack
-  const previousState = state.undoStack[state.undoStack.length - 1]; // Get the state to revert to
+  state.redoStack.push(currentState);
+  state.undoStack.pop();
+  const previousState = state.undoStack[state.undoStack.length - 1];
   restoreState(previousState);
 }
 
 function redo() {
   if (state.redoStack.length === 0) return;
-
   const currentState = {
     width: state.width,
     height: state.height,
@@ -1166,9 +1042,8 @@ function redo() {
       imageDataURL: layer.canvas.toDataURL()
     }))
   };
-  state.undoStack.push(currentState); // Save current state to undo stack
-
-  const nextState = state.redoStack.pop(); // Get the state to reapply
+  state.undoStack.push(currentState);
+  const nextState = state.redoStack.pop();
   restoreState(nextState);
 }
 
@@ -1176,13 +1051,10 @@ function updateUndoRedoButtons() {
   document.getElementById('btn-undo').disabled = state.undoStack.length <= 1;
   document.getElementById('btn-redo').disabled = state.redoStack.length === 0;
 }
-
 document.getElementById('btn-undo').onclick = undo;
 document.getElementById('btn-redo').onclick = redo;
-
-// Keyboard shortcuts for undo/redo
 window.addEventListener('keydown', (e) => {
-  if (e.ctrlKey || e.metaKey) { // Ctrl for Windows/Linux, Meta for macOS
+  if (e.ctrlKey || e.metaKey) {
     if (e.key === 'z' || e.key === 'Z') {
       e.preventDefault();
       undo();
@@ -1192,6 +1064,5 @@ window.addEventListener('keydown', (e) => {
     }
   }
 });
-
 init();
 fitToScreen();
