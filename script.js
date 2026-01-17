@@ -887,6 +887,10 @@ document.getElementById('btn-scale-layer').onclick = () => {
   modalAction = 'scaleLayer';
   modal.classList.remove('hidden');
 };
+
+document.getElementById('zoom-orig').onclick = () => setZoom(1.0);
+
+
 document.getElementById('btn-modal-cancel').onclick = () => modal.classList.add('hidden');
 document.getElementById('btn-modal-confirm').onclick = () => {
   if (modalAction === 'new') {
