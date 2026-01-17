@@ -37,8 +37,13 @@ const state = {
     initialMouseX: 0, // Mouse X at start of drag/resize/move
     initialMouseY: 0, // Mouse Y at start of drag/resize/move
     initialRect: null // {x, y, w, h} - Rect at start of drag/resize/move
-  }
+  },
+  undoStack: [],
+  redoStack: [],
+  maxHistory: 20, // Max number of states to keep in history
+  isUndoingRedoing: false // Flag to prevent saving state during undo/redo operations
 };
+
 
 const stage = document.getElementById('canvas-stage');
 const wrapper = document.getElementById('canvas-wrapper');
@@ -51,6 +56,9 @@ const HANDLE_SIZE = 8; // Size of crop resize handles in canvas pixels
 const tools = ['move', 'brush', 'eraser', 'text', 'crop'];
 
 function init(w = 800, h = 600) {
+  state.isUndoingRedoing = true; // Prevent saving initial state to undo stack twice
+  state.undoStack = [];
+  state.redoStack = [];
   setCanvasSize(w, h);
   state.layers = [];
   state.nextLayerId = 1;
@@ -64,7 +72,10 @@ function init(w = 800, h = 600) {
   setZoom(1.0);
   updateUI();
   exitCropMode(); // Reset crop state
+  state.isUndoingRedoing = false;
+  saveState(); // Save the initial state
 }
+
 
 
 function setCanvasSize(w, h) {
@@ -75,6 +86,8 @@ function setCanvasSize(w, h) {
   cropOverlay.width = w;
   cropOverlay.height = h;
 }
+
+
 window.addEventListener('paste', (e) => {
   const items = e.clipboardData.items;
   for (let item of items) {
@@ -84,6 +97,7 @@ window.addEventListener('paste', (e) => {
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
+          saveState(); // Save state before adding new layer
           addLayer("Pasted Image", img);
         };
         img.src = event.target.result;
@@ -92,6 +106,7 @@ window.addEventListener('paste', (e) => {
     }
   }
 });
+
 
 function setZoom(lvl) {
   state.zoom = Math.max(0.1, Math.min(5.0, lvl));
@@ -121,6 +136,9 @@ function fitToScreen() {
 }
 
 function addLayer(name, sourceImage = null) {
+  if (!state.isUndoingRedoing) {
+    saveState();
+  }
   const id = state.nextLayerId++;
   const canvas = document.createElement('canvas');
   canvas.width = state.width;
@@ -146,10 +164,13 @@ function addLayer(name, sourceImage = null) {
   return layer;
 }
 
+
 function setActiveLayer(id) {
   state.activeLayerId = id;
   updateLayersUI();
+  updateUI(); // To update opacity slider
 }
+
 
 function getActiveLayer() {
   return state.layers.find(l => l.id === state.activeLayerId);
@@ -157,6 +178,7 @@ function getActiveLayer() {
 
 function deleteLayer() {
   if (state.layers.length <= 1) return alert("Cannot delete the last layer");
+  saveState(); // Save state before deleting
   const idx = state.layers.findIndex(l => l.id === state.activeLayerId);
   const layer = state.layers[idx];
   layer.canvas.remove();
@@ -164,16 +186,17 @@ function deleteLayer() {
   setActiveLayer(state.layers[Math.max(0, idx - 1)].id);
 }
 
+
 function moveLayerOrder(dir) {
   const idx = state.layers.findIndex(l => l.id === state.activeLayerId);
-  if (dir === 1 && idx < state.layers.length - 1) {
-    [state.layers[idx], state.layers[idx + 1]] = [state.layers[idx + 1], state.layers[idx]];
-  } else if (dir === -1 && idx > 0) {
-    [state.layers[idx], state.layers[idx - 1]] = [state.layers[idx - 1], state.layers[idx]];
+  if ((dir === 1 && idx < state.layers.length - 1) || (dir === -1 && idx > 0)) {
+    saveState(); // Save state before reordering
+    [state.layers[idx], state.layers[idx + dir]] = [state.layers[idx + dir], state.layers[idx]];
+    refreshLayerZIndex();
+    updateLayersUI();
   }
-  refreshLayerZIndex();
-  updateLayersUI();
 }
+
 
 function refreshLayerZIndex() {
   state.layers.forEach((l, idx) => {
@@ -195,14 +218,17 @@ stage.addEventListener('mousedown', e => {
   if (!layer || !layer.visible) return;
   const pos = getMousePos(e);
   if (state.tool === 'text') {
+    saveState(); // Save state before placing text
     placeText(pos, layer.ctx, layer);
     return;
   }
   state.isDrawing = true;
   state.lastPos = pos;
   if (state.tool === 'brush' || state.tool === 'eraser') {
+    saveState(); // Save state at the start of a drawing stroke
     draw(pos);
   } else if (state.tool === 'move') {
+    saveState(); // Save state at the start of a move operation
     state.moveStart = {
       x: e.clientX,
       y: e.clientY,
@@ -211,6 +237,7 @@ stage.addEventListener('mousedown', e => {
     };
   }
 });
+
 window.addEventListener('mousemove', e => {
   if (state.tool === 'crop') return handleCropMove(e);
   if (!state.isDrawing) return;
@@ -232,6 +259,7 @@ window.addEventListener('mouseup', () => {
   state.isDrawing = false; // General drawing/dragging ended
   if (state.tool === 'crop') handleCropEnd();
 });
+
 
 // Cursor changes for crop tool
 cropOverlay.addEventListener('mousemove', setCropCursor);
@@ -662,6 +690,7 @@ function setCropCursor(e) {
 
 function applyCrop() {
   if (!state.crop.rect || state.crop.rect.w < 1) return;
+  saveState(); // Save state before applying crop
   const r = state.crop.rect;
   const newW = Math.round(r.w);
   const newH = Math.round(r.h);
@@ -684,6 +713,7 @@ function applyCrop() {
   setZoom(1.0);
   fitToScreen();
 }
+
 
 function exitCropMode() {
   state.crop.rect = null;
@@ -719,7 +749,10 @@ function updateUI() {
   if (active) {
     document.getElementById('layer-opacity').value = active.opacity * 100;
   }
+
+  updateUndoRedoButtons();
 }
+
 
 function updateLayersUI() {
   layersList.innerHTML = '';
@@ -785,13 +818,17 @@ document.getElementById('text-color').oninput = (e) => state.text.color = e.targ
 document.getElementById('zoom-in').onclick = () => setZoom(state.zoom + 0.1);
 document.getElementById('zoom-out').onclick = () => setZoom(state.zoom - 0.1);
 document.getElementById('zoom-fit').onclick = fitToScreen;
+
 document.getElementById('layer-opacity').oninput = (e) => {
   const l = getActiveLayer();
   if (l) {
+    saveState(); // Save state before changing opacity
     l.opacity = e.target.value / 100;
     l.canvas.style.opacity = l.opacity;
   }
 };
+
+
 document.getElementById('btn-add-layer').onclick = () => addLayer();
 document.getElementById('btn-delete-layer').onclick = deleteLayer;
 document.getElementById('btn-layer-up').onclick = () => moveLayerOrder(1);
@@ -802,6 +839,7 @@ document.getElementById('btn-cancel-crop').onclick = exitCropMode;
 // Crop aspect ratio buttons
 cropRatioButtons.forEach(button => {
   button.onclick = () => {
+    saveState(); // Save state before changing aspect ratio
     state.crop.aspectRatio = button.dataset.ratio;
     // Re-adjust existing crop rect if aspect ratio changes
     if (state.crop.rect) {
@@ -873,6 +911,7 @@ fileInput.onchange = (e) => {
   reader.onload = (evt) => {
     const img = new Image();
     img.onload = () => {
+      saveState(); // Save state before changing canvas or adding layer
       if (state.layers.length === 1 && state.layers[0].name === "Background") {
         setCanvasSize(img.width, img.height);
         const bg = state.layers[0];
@@ -892,6 +931,10 @@ fileInput.onchange = (e) => {
   reader.readAsDataURL(file);
   fileInput.value = '';
 };
+
+
+
+
 document.getElementById('btn-export').onclick = () => {
   const exCanvas = document.createElement('canvas');
   exCanvas.width = state.width;
@@ -938,32 +981,48 @@ document.getElementById('btn-scale-layer').onclick = () => {
   modal.classList.remove('hidden');
 };
 document.getElementById('btn-modal-cancel').onclick = () => modal.classList.add('hidden');
+
+
 document.getElementById('btn-modal-confirm').onclick = () => {
-  if (modalAction === 'new' || modalAction === 'resize') {
+  if (modalAction === 'new') {
     const w = parseInt(document.getElementById('inp-width').value);
     const h = parseInt(document.getElementById('inp-height').value);
-    if (modalAction === 'new') {
-      init(w, h);
-      fitToScreen();
-    } else {
-      const oldW = state.width;
-      const oldH = state.height;
-      setCanvasSize(w, h);
-      state.layers.forEach(l => {
-        const temp = document.createElement('canvas');
-        temp.width = oldW;
-        temp.height = oldH;
-        temp.getContext('2d').drawImage(l.canvas, 0, 0);
-        l.canvas.width = w;
-        l.canvas.height = h;
-        l.ctx = l.canvas.getContext('2d');
-        l.ctx.drawImage(temp, 0, 0, w, h);
-      });
+    if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
+      alert("Please enter valid width and height.");
+      return;
     }
+    init(w, h); // init() calls saveState() internally
+    fitToScreen();
+  } else if (modalAction === 'resize') {
+    const w = parseInt(document.getElementById('inp-width').value);
+    const h = parseInt(document.getElementById('inp-height').value);
+    if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
+      alert("Please enter valid width and height.");
+      return;
+    }
+    saveState(); // Save state before resizing
+    const oldW = state.width;
+    const oldH = state.height;
+    setCanvasSize(w, h);
+    state.layers.forEach(l => {
+      const temp = document.createElement('canvas');
+      temp.width = oldW;
+      temp.height = oldH;
+      temp.getContext('2d').drawImage(l.canvas, 0, 0);
+      l.canvas.width = w;
+      l.canvas.height = h;
+      l.ctx = l.canvas.getContext('2d');
+      l.ctx.drawImage(temp, 0, 0, w, h);
+    });
   } else if (modalAction === 'scaleLayer') {
     const scale = parseFloat(document.getElementById('inp-scale').value) / 100;
+    if (isNaN(scale) || scale <= 0) {
+      alert("Please enter a valid scale percentage.");
+      return;
+    }
     const layer = getActiveLayer();
-    if (layer && scale > 0) {
+    if (layer) {
+      saveState(); // Save state before scaling layer
       const temp = document.createElement('canvas');
       temp.width = layer.canvas.width;
       temp.height = layer.canvas.height;
@@ -980,6 +1039,159 @@ document.getElementById('btn-modal-confirm').onclick = () => {
     }
   }
   modal.classList.add('hidden');
+  updateUndoRedoButtons();
 };
+function saveState() {
+  if (state.isUndoingRedoing) return; // Don't save state if we are currently undoing/redoing
+
+  // Capture current state of layers, canvas dimensions, active layer etc.
+  const snapshot = {
+    width: state.width,
+    height: state.height,
+    zoom: state.zoom,
+    activeLayerId: state.activeLayerId,
+    layers: state.layers.map(layer => ({
+      id: layer.id,
+      name: layer.name,
+      x: layer.x,
+      y: layer.y,
+      opacity: layer.opacity,
+      visible: layer.visible,
+      imageDataURL: layer.canvas.toDataURL()
+    }))
+  };
+
+  state.undoStack.push(snapshot);
+  if (state.undoStack.length > state.maxHistory) {
+    state.undoStack.shift(); // Remove the oldest state
+  }
+  state.redoStack = []; // Clear redo stack on new action
+  updateUndoRedoButtons();
+}
+
+function restoreState(snapshot) {
+  state.isUndoingRedoing = true; // Set flag to prevent saving
+  setCanvasSize(snapshot.width, snapshot.height);
+  setZoom(snapshot.zoom);
+
+  // Clear existing layers from stage
+  state.layers.forEach(layer => layer.canvas.remove());
+  state.layers = [];
+
+  // Restore layers
+  snapshot.layers.forEach(savedLayer => {
+    const canvas = document.createElement('canvas');
+    canvas.width = state.width;
+    canvas.height = state.height;
+    canvas.id = `layer-${savedLayer.id}`;
+    const ctx = canvas.getContext('2d');
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0);
+    };
+    img.src = savedLayer.imageDataURL;
+
+
+    const layer = {
+      id: savedLayer.id,
+      name: savedLayer.name,
+      canvas,
+      ctx,
+      visible: savedLayer.visible,
+      opacity: savedLayer.opacity,
+      x: savedLayer.x,
+      y: savedLayer.y
+    };
+    state.layers.push(layer);
+    stage.insertBefore(canvas, cropOverlay); // Insert before overlay
+    layer.canvas.style.opacity = layer.opacity;
+    layer.canvas.style.display = layer.visible ? 'block' : 'none';
+    layer.canvas.style.transform = `translate(${layer.x}px, ${layer.y}px)`;
+  });
+
+  state.activeLayerId = snapshot.activeLayerId;
+  updateLayersUI();
+  updateUI();
+  drawCropOverlay(); // Clear or redraw crop overlay if needed
+  fitToScreen(); // Re-fit if canvas size changed
+
+  // Reset tool as restoration might change current tool context
+  setTool(state.tool);
+
+  state.isUndoingRedoing = false; // Reset flag
+  updateUndoRedoButtons();
+}
+
+function undo() {
+  if (state.undoStack.length < 2) return; // Need at least 2 states to undo (current state + previous)
+
+  const currentState = {
+    width: state.width,
+    height: state.height,
+    zoom: state.zoom,
+    activeLayerId: state.activeLayerId,
+    layers: state.layers.map(layer => ({
+      id: layer.id,
+      name: layer.name,
+      x: layer.x,
+      y: layer.y,
+      opacity: layer.opacity,
+      visible: layer.visible,
+      imageDataURL: layer.canvas.toDataURL()
+    }))
+  };
+  state.redoStack.push(currentState); // Save current state to redo stack
+
+  state.undoStack.pop(); // Remove current state from undo stack
+  const previousState = state.undoStack[state.undoStack.length - 1]; // Get the state to revert to
+  restoreState(previousState);
+}
+
+function redo() {
+  if (state.redoStack.length === 0) return;
+
+  const currentState = {
+    width: state.width,
+    height: state.height,
+    zoom: state.zoom,
+    activeLayerId: state.activeLayerId,
+    layers: state.layers.map(layer => ({
+      id: layer.id,
+      name: layer.name,
+      x: layer.x,
+      y: layer.y,
+      opacity: layer.opacity,
+      visible: layer.visible,
+      imageDataURL: layer.canvas.toDataURL()
+    }))
+  };
+  state.undoStack.push(currentState); // Save current state to undo stack
+
+  const nextState = state.redoStack.pop(); // Get the state to reapply
+  restoreState(nextState);
+}
+
+function updateUndoRedoButtons() {
+  document.getElementById('btn-undo').disabled = state.undoStack.length <= 1;
+  document.getElementById('btn-redo').disabled = state.redoStack.length === 0;
+}
+
+document.getElementById('btn-undo').onclick = undo;
+document.getElementById('btn-redo').onclick = redo;
+
+// Keyboard shortcuts for undo/redo
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey) { // Ctrl for Windows/Linux, Meta for macOS
+    if (e.key === 'z' || e.key === 'Z') {
+      e.preventDefault();
+      undo();
+    } else if (e.key === 'y' || e.key === 'Y') {
+      e.preventDefault();
+      redo();
+    }
+  }
+});
+
 init();
 fitToScreen();
