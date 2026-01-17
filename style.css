@@ -267,7 +267,6 @@ body {
   color: white;
 }
 
-
 input[type="range"] {
   width: 80px;
   accent-color: var(--highlight-color);
