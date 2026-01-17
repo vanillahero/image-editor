@@ -144,9 +144,6 @@ function fitToScreen() {
 }
 
 function addLayer(name, sourceImage = null) {
-  if (!state.isUndoingRedoing) {
-    saveState();
-  }
   const id = state.nextLayerId++;
   const canvas = document.createElement('canvas');
   canvas.width = state.width;
@@ -175,6 +172,7 @@ function addLayer(name, sourceImage = null) {
   applyLayerStyles(layer); // Apply initial styles including filters
   return layer;
 }
+
 
 
 function setActiveLayer(id) {
@@ -802,7 +800,8 @@ document.getElementById('text-font-family').onchange = (e) => state.text.fontFam
 
 document.getElementById('text-shadow-enabled').onchange = (e) => state.text.shadowEnabled = e.target.checked;
 
-document.getElementById('filter-light-slider').oninput = (e) => {
+
+document.getElementById('filter-light-slider').onchange = (e) => {
   const layer = getActiveLayer();
   if (layer) {
     saveState();
@@ -810,7 +809,9 @@ document.getElementById('filter-light-slider').oninput = (e) => {
     applyLayerStyles(layer);
   }
 };
-document.getElementById('filter-contrast-slider').oninput = (e) => {
+
+
+document.getElementById('filter-contrast-slider').onchange = (e) => {
   const layer = getActiveLayer();
   if (layer) {
     saveState();
@@ -818,7 +819,10 @@ document.getElementById('filter-contrast-slider').oninput = (e) => {
     applyLayerStyles(layer);
   }
 };
-document.getElementById('filter-saturation-slider').oninput = (e) => {
+
+
+
+document.getElementById('filter-saturation-slider').onchange = (e) => {
   const layer = getActiveLayer();
   if (layer) {
     saveState();
@@ -829,11 +833,12 @@ document.getElementById('filter-saturation-slider').oninput = (e) => {
 
 
 
+
 document.getElementById('zoom-in').onclick = () => setZoom(state.zoom + 0.1);
 document.getElementById('zoom-out').onclick = () => setZoom(state.zoom - 0.1);
 document.getElementById('zoom-fit').onclick = fitToScreen;
 
-document.getElementById('layer-opacity').oninput = (e) => {
+document.getElementById('layer-opacity').onchange = (e) => {
   const l = getActiveLayer();
   if (l) {
     saveState();
@@ -843,7 +848,12 @@ document.getElementById('layer-opacity').oninput = (e) => {
 };
 
 
-document.getElementById('btn-add-layer').onclick = () => addLayer();
+document.getElementById('btn-add-layer').onclick = () => {
+  saveState(); // Ensure state is saved before adding a new layer
+  addLayer();
+};
+
+
 document.getElementById('btn-delete-layer').onclick = deleteLayer;
 document.getElementById('btn-layer-up').onclick = () => moveLayerOrder(1);
 document.getElementById('btn-layer-down').onclick = () => moveLayerOrder(-1);
