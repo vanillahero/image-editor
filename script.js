@@ -49,8 +49,6 @@ const state = {
   maxHistory: 20,
   isUndoingRedoing: false
 };
-
-
 const stage = document.getElementById('canvas-stage');
 const wrapper = document.getElementById('canvas-wrapper');
 const cropOverlay = document.getElementById('crop-overlay');
@@ -64,7 +62,6 @@ const inpHeight = document.getElementById('inp-height');
 const cropRatioButtons = document.querySelectorAll('.crop-ratio-btn');
 const HANDLE_SIZE = 8;
 const tools = ['move', 'brush', 'eraser', 'text', 'crop', 'filters'];
-
 
 function init(w = 800, h = 600) {
   state.isUndoingRedoing = true;
@@ -162,18 +159,16 @@ function addLayer(name, sourceImage = null) {
     opacity: 1.0,
     x: 0,
     y: 0,
-    brightness: 100, // Default filter values
+    brightness: 100,
     contrast: 100,
     saturate: 100
   };
   state.layers.push(layer);
   stage.insertBefore(canvas, cropOverlay);
   setActiveLayer(id);
-  applyLayerStyles(layer); // Apply initial styles including filters
+  applyLayerStyles(layer);
   return layer;
 }
-
-
 
 function setActiveLayer(id) {
   state.activeLayerId = id;
@@ -192,7 +187,6 @@ function applyLayerStyles(layer) {
   layer.canvas.style.transform = `translate(${layer.x}px, ${layer.y}px)`;
   layer.canvas.style.filter = `brightness(${layer.brightness}%) contrast(${layer.contrast}%) saturate(${layer.saturate}%)`;
 }
-
 
 function deleteLayer() {
   if (state.layers.length <= 1) return alert("Cannot delete the last layer");
@@ -331,7 +325,6 @@ function placeText(pos, ctx, layer) {
     ctx.shadowOffsetY = 0;
   }
 }
-
 
 function handleCropStart(e) {
   if (!e.target.closest('#canvas-stage')) return;
@@ -695,7 +688,7 @@ function exitCropMode() {
 
 function updateUI() {
   tools.forEach(t => {
-    document.getElementById(`tool-${t}`)?.classList.toggle('active', state.tool === t); // Use optional chaining for tools not yet added as buttons
+    document.getElementById(`tool-${t}`)?.classList.toggle('active', state.tool === t);
   });
   document.querySelectorAll('.option-group').forEach(el => el.classList.add('hidden'));
   if (state.tool === 'brush' || state.tool === 'eraser') document.getElementById('opt-brush').classList.remove('hidden');
@@ -726,8 +719,6 @@ function updateUI() {
   updateUndoRedoButtons();
 }
 
-
-
 function updateLayersUI() {
   layersList.innerHTML = '';
   state.layers.forEach(layer => {
@@ -753,7 +744,6 @@ function updateLayersUI() {
   refreshLayerZIndex();
 }
 
-
 function setTool(t) {
   state.tool = t;
   if (t === 'crop') {
@@ -778,29 +768,19 @@ function setTool(t) {
   }
   updateUI();
 }
-
-
-
 document.getElementById('tool-move').onclick = () => setTool('move');
 document.getElementById('tool-brush').onclick = () => setTool('brush');
 document.getElementById('tool-eraser').onclick = () => setTool('eraser');
 document.getElementById('tool-text').onclick = () => setTool('text');
-
 document.getElementById('tool-crop').onclick = () => setTool('crop');
 document.getElementById('btn-filters').onclick = () => setTool('filters');
-
-
 document.getElementById('brush-size').oninput = (e) => state.brush.size = e.target.value;
 document.getElementById('brush-color').oninput = (e) => state.brush.color = e.target.value;
 document.getElementById('text-content').oninput = (e) => state.text.content = e.target.value;
 document.getElementById('text-size').oninput = (e) => state.text.size = e.target.value;
-
 document.getElementById('text-color').oninput = (e) => state.text.color = e.target.value;
 document.getElementById('text-font-family').onchange = (e) => state.text.fontFamily = e.target.value;
-
 document.getElementById('text-shadow-enabled').onchange = (e) => state.text.shadowEnabled = e.target.checked;
-
-
 document.getElementById('filter-light-slider').onchange = (e) => {
   const layer = getActiveLayer();
   if (layer) {
@@ -809,8 +789,6 @@ document.getElementById('filter-light-slider').onchange = (e) => {
     applyLayerStyles(layer);
   }
 };
-
-
 document.getElementById('filter-contrast-slider').onchange = (e) => {
   const layer = getActiveLayer();
   if (layer) {
@@ -819,9 +797,6 @@ document.getElementById('filter-contrast-slider').onchange = (e) => {
     applyLayerStyles(layer);
   }
 };
-
-
-
 document.getElementById('filter-saturation-slider').onchange = (e) => {
   const layer = getActiveLayer();
   if (layer) {
@@ -830,14 +805,9 @@ document.getElementById('filter-saturation-slider').onchange = (e) => {
     applyLayerStyles(layer);
   }
 };
-
-
-
-
 document.getElementById('zoom-in').onclick = () => setZoom(state.zoom + 0.1);
 document.getElementById('zoom-out').onclick = () => setZoom(state.zoom - 0.1);
 document.getElementById('zoom-fit').onclick = fitToScreen;
-
 document.getElementById('layer-opacity').onchange = (e) => {
   const l = getActiveLayer();
   if (l) {
@@ -846,14 +816,10 @@ document.getElementById('layer-opacity').onchange = (e) => {
     applyLayerStyles(l);
   }
 };
-
-
 document.getElementById('btn-add-layer').onclick = () => {
-  saveState(); // Ensure state is saved before adding a new layer
+  saveState();
   addLayer();
 };
-
-
 document.getElementById('btn-delete-layer').onclick = deleteLayer;
 document.getElementById('btn-layer-up').onclick = () => moveLayerOrder(1);
 document.getElementById('btn-layer-down').onclick = () => moveLayerOrder(-1);
@@ -912,8 +878,6 @@ function moveCropRect(currentPos) {
   state.crop.rect.y = newY;
 }
 const fileInput = document.getElementById('file-input');
-
-
 fileInput.onchange = (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -941,10 +905,6 @@ fileInput.onchange = (e) => {
   };
   reader.readAsDataURL(file);
 };
-
-
-
-
 document.getElementById('btn-export').onclick = () => {
   const exCanvas = document.createElement('canvas');
   exCanvas.width = state.width;
@@ -993,10 +953,7 @@ document.getElementById('btn-scale-layer').onclick = () => {
   modalAction = 'scaleLayer';
   modal.classList.remove('hidden');
 };
-
 document.getElementById('zoom-orig').onclick = () => setZoom(1.0);
-
-
 document.getElementById('btn-modal-cancel').onclick = () => modal.classList.add('hidden');
 document.getElementById('btn-modal-confirm').onclick = () => {
   if (modalAction === 'new') {
@@ -1099,7 +1056,6 @@ keepAspectRatioCheckbox.addEventListener('change', () => {
   }
 });
 
-
 function saveState() {
   if (state.isUndoingRedoing) return;
   const snapshot = {
@@ -1114,7 +1070,7 @@ function saveState() {
       y: layer.y,
       opacity: layer.opacity,
       visible: layer.visible,
-      brightness: layer.brightness, // Save filter values
+      brightness: layer.brightness,
       contrast: layer.contrast,
       saturate: layer.saturate,
       imageDataURL: layer.canvas.toDataURL()
@@ -1127,9 +1083,6 @@ function saveState() {
   state.redoStack = [];
   updateUndoRedoButtons();
 }
-
-
-
 async function _applyStateSnapshot(snapshot, isProjectLoad = false) {
   state.isUndoingRedoing = true;
   state.width = snapshot.width;
@@ -1157,13 +1110,13 @@ async function _applyStateSnapshot(snapshot, isProjectLoad = false) {
           opacity: savedLayer.opacity,
           x: savedLayer.x,
           y: savedLayer.y,
-          brightness: savedLayer.brightness || 100, // Load filter values, default if not present
+          brightness: savedLayer.brightness || 100,
           contrast: savedLayer.contrast || 100,
           saturate: savedLayer.saturate || 100
         };
         state.layers.push(layer);
         stage.insertBefore(canvas, cropOverlay);
-        applyLayerStyles(layer); // Apply loaded styles including filters
+        applyLayerStyles(layer);
         resolve();
       };
       img.onerror = () => {
@@ -1191,7 +1144,6 @@ async function _applyStateSnapshot(snapshot, isProjectLoad = false) {
   setTool(state.tool);
 }
 
-
 function undo() {
   if (state.undoStack.length < 2) return;
   const currentState = {
@@ -1218,7 +1170,6 @@ function undo() {
   _applyStateSnapshot(previousState);
 }
 
-
 function redo() {
   if (state.redoStack.length === 0) return;
   const currentState = {
@@ -1243,7 +1194,6 @@ function redo() {
   const nextState = state.redoStack.pop();
   _applyStateSnapshot(nextState);
 }
-
 
 function saveProject() {
   const projectData = {
@@ -1278,7 +1228,6 @@ function saveProject() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
-
 
 function openProjectFile(file) {
   if (!file) return;
