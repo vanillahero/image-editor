@@ -921,11 +921,6 @@ fileInput.onchange = (e) => {
   reader.onload = (evt) => {
     const img = new Image();
     img.onload = () => {
-      // Removed saveState() from here.
-      // The state before the image load is already captured by init() or a previous action.
-      // The *next* user action (e.g., first brush stroke) will correctly save the state
-      // *after* the image has been loaded, providing a correct undo point.
-
       if (state.layers.length === 1 && state.layers[0].name === "Background") {
         setCanvasSize(img.width, img.height);
         const bg = state.layers[0];
@@ -934,11 +929,13 @@ fileInput.onchange = (e) => {
         bg.ctx = bg.canvas.getContext('2d');
         bg.ctx.drawImage(img, 0, 0);
         bg.name = file.name;
+        applyLayerStyles(bg); // Ensure styles are applied to the updated background layer
         updateLayersUI();
         fitToScreen();
       } else {
         addLayer(file.name, img);
       }
+      saveState(); // Save the state *after* the image is loaded and drawn
     };
     img.src = evt.target.result;
   };
