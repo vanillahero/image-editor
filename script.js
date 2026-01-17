@@ -929,17 +929,17 @@ fileInput.onchange = (e) => {
         bg.ctx = bg.canvas.getContext('2d');
         bg.ctx.drawImage(img, 0, 0);
         bg.name = file.name;
-        applyLayerStyles(bg); // Ensure styles are applied to the updated background layer
+        applyLayerStyles(bg);
         updateLayersUI();
         fitToScreen();
       } else {
         addLayer(file.name, img);
       }
-      saveState(); // Save the state *after* the image is loaded and drawn
+      saveState();
     };
     img.src = evt.target.result;
   };
-  fileInput.value = '';
+  reader.readAsDataURL(file);
 };
 
 
