@@ -36,56 +36,52 @@
         </button>
       </div>
       <div class="main-area">
-<div class="top-bar">
-  <label class="btn secondary" style="margin-right:5px">
-    Open <input type="file" id="file-input" accept="image/*" style="display:none">
-  </label>
-  <button class="btn secondary" id="btn-new">New</button>
-  <button class="btn secondary" id="btn-resize">Resize</button>
-  <div style="width:1px; height:20px; background:#444; margin:0 10px;"></div>
-  <button class="btn secondary" id="btn-undo" title="Undo (Ctrl+Z)" disabled>Undo</button>
-  <button class="btn secondary" id="btn-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
-  <div style="width:1px; height:20px; background:#444; margin:0 10px;"></div>
-  <div class="tool-options">
-    <div id="opt-brush" class="option-group hidden">
-      <label>Color:</label>
-      <input type="color" id="brush-color" value="#ffffff">
-      <label>Size:</label>
-      <input type="range" id="brush-size" min="1" max="100" value="20">
-    </div>
-    <div id="opt-text" class="option-group hidden">
-      <label>Text:</label>
-      <input type="text" id="text-content" value="Hello World">
-      <label>Size:</label>
-      <input type="number" id="text-size" value="40" min="8" max="200">
-      <input type="color" id="text-color" value="#ffffff">
-      <span style="font-size:11px; color:#888; margin-left:5px;">Click image</span>
-    </div>
-
-    <div id="opt-crop" class="option-group hidden">
-      <div style="display:flex; align-items:center; gap:5px; margin-right: 10px;">
-        <label style="font-size:11px; color:#888;">Ratio:</label>
-        <button class="btn secondary crop-ratio-btn active" data-ratio="free">Free</button>
-        <button class="btn secondary crop-ratio-btn" data-ratio="square">1:1</button>
-        <button class="btn secondary crop-ratio-btn" data-ratio="4:3">4:3</button>
-        <button class="btn secondary crop-ratio-btn" data-ratio="16:9">16:9</button>
-      </div>
-      <span id="crop-dimensions" style="font-size:11px; color:#888; white-space:nowrap;">Draw rect to crop</span>
-      <button class="btn" id="btn-apply-crop">Apply</button>
-      <button class="btn secondary" id="btn-cancel-crop">Cancel</button>
-    </div>
-
-
-  </div>
-  <div class="zoom-controls">
-    <button class="icon-btn" id="zoom-out" title="Zoom Out">-</button>
-    <span class="zoom-label" id="zoom-val">100%</span>
-    <button class="icon-btn" id="zoom-in" title="Zoom In">+</button>
-    <button class="btn secondary" style="padding: 2px 8px; margin-left:5px; font-size:10px;" id="zoom-fit">Fit</button>
-  </div>
-  <button class="btn" id="btn-export">Export</button>
-</div>
-
+        <div class="top-bar">
+          <label class="btn secondary" style="margin-right:5px">
+            Open <input type="file" id="file-input" accept="image/*" style="display:none">
+          </label>
+          <button class="btn secondary" id="btn-new">New</button>
+          <button class="btn secondary" id="btn-resize">Resize</button>
+          <div style="width:1px; height:20px; background:#444; margin:0 10px;"></div>
+          <button class="btn secondary" id="btn-undo" title="Undo (Ctrl+Z)" disabled>Undo</button>
+          <button class="btn secondary" id="btn-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
+          <div style="width:1px; height:20px; background:#444; margin:0 10px;"></div>
+          <div class="tool-options">
+            <div id="opt-brush" class="option-group hidden">
+              <label>Color:</label>
+              <input type="color" id="brush-color" value="#ffffff">
+              <label>Size:</label>
+              <input type="range" id="brush-size" min="1" max="100" value="20">
+            </div>
+            <div id="opt-text" class="option-group hidden">
+              <label>Text:</label>
+              <input type="text" id="text-content" value="Hello World">
+              <label>Size:</label>
+              <input type="number" id="text-size" value="40" min="8" max="200">
+              <input type="color" id="text-color" value="#ffffff">
+              <span style="font-size:11px; color:#888; margin-left:5px;">Click image</span>
+            </div>
+            <div id="opt-crop" class="option-group hidden">
+              <div style="display:flex; align-items:center; gap:5px; margin-right: 10px;">
+                <label style="font-size:11px; color:#888;">Ratio:</label>
+                <button class="btn secondary crop-ratio-btn active" data-ratio="free">Free</button>
+                <button class="btn secondary crop-ratio-btn" data-ratio="square">1:1</button>
+                <button class="btn secondary crop-ratio-btn" data-ratio="4:3">4:3</button>
+                <button class="btn secondary crop-ratio-btn" data-ratio="16:9">16:9</button>
+              </div>
+              <span id="crop-dimensions" style="font-size:11px; color:#888; white-space:nowrap;">Draw rect to crop</span>
+              <button class="btn" id="btn-apply-crop">Apply</button>
+              <button class="btn secondary" id="btn-cancel-crop">Cancel</button>
+            </div>
+          </div>
+          <div class="zoom-controls">
+            <button class="icon-btn" id="zoom-out" title="Zoom Out">-</button>
+            <span class="zoom-label" id="zoom-val">100%</span>
+            <button class="icon-btn" id="zoom-in" title="Zoom In">+</button>
+            <button class="btn secondary" style="padding: 2px 8px; margin-left:5px; font-size:10px;" id="zoom-fit">Fit</button>
+          </div>
+          <button class="btn" id="btn-export">Export</button>
+        </div>
         <div class="canvas-wrapper" id="canvas-wrapper">
           <div id="canvas-stage">
             <canvas id="crop-overlay"></canvas>
