@@ -38,7 +38,7 @@ const state = {
     initialMouseY: 0,
     initialRect: null
   },
-  resize: { // New state for resize modal
+  resize: {
     keepAspectRatio: true,
     originalAspectRatio: 1
   },
@@ -47,57 +47,42 @@ const state = {
   maxHistory: 20,
   isUndoingRedoing: false
 };
-
-
-
 const stage = document.getElementById('canvas-stage');
 const wrapper = document.getElementById('canvas-wrapper');
 const cropOverlay = document.getElementById('crop-overlay');
 const cropCtx = cropOverlay.getContext('2d');
 const layersList = document.getElementById('layers-list');
-
 const cropDimensionsSpan = document.getElementById('crop-dimensions');
-
-
 const projectInput = document.getElementById('project-input');
 const keepAspectRatioCheckbox = document.getElementById('keep-aspect-ratio');
 const inpWidth = document.getElementById('inp-width');
 const inpHeight = document.getElementById('inp-height');
 const cropRatioButtons = document.querySelectorAll('.crop-ratio-btn');
-
-
-
 const HANDLE_SIZE = 8;
 const tools = ['move', 'brush', 'eraser', 'text', 'crop'];
 
 function init(w = 800, h = 600) {
-  state.isUndoingRedoing = true; // Prevent saving initial state to undo history
+  state.isUndoingRedoing = true;
   state.undoStack = [];
   state.redoStack = [];
-
   setCanvasSize(w, h);
-  state.layers.forEach(layer => layer.canvas.remove()); // Clear any existing layers
+  state.layers.forEach(layer => layer.canvas.remove());
   state.layers = [];
   state.nextLayerId = 1;
-
   const overlay = document.getElementById('crop-overlay');
-  stage.innerHTML = ''; // Clear stage content
+  stage.innerHTML = '';
   stage.appendChild(overlay);
-
   addLayer("Background");
   const bg = state.layers[0];
   bg.ctx.fillStyle = "white";
   bg.ctx.fillRect(0, 0, state.width, state.height);
-  setActiveLayer(bg.id); // Ensure background is active
-
+  setActiveLayer(bg.id);
   setZoom(1.0);
   updateUI();
   exitCropMode();
-
   state.isUndoingRedoing = false;
-  saveState(); // Save initial state to undo history
+  saveState();
 }
-
 
 function setCanvasSize(w, h) {
   state.width = w;
@@ -723,7 +708,6 @@ function updateLayersUI() {
   refreshLayerZIndex();
 }
 
-
 function setTool(t) {
   state.tool = t;
   if (t === 'crop') {
@@ -748,9 +732,6 @@ function setTool(t) {
   }
   updateUI();
 }
-
-
-
 document.getElementById('tool-move').onclick = () => setTool('move');
 document.getElementById('tool-brush').onclick = () => setTool('brush');
 document.getElementById('tool-eraser').onclick = () => setTool('eraser');
@@ -764,7 +745,6 @@ document.getElementById('text-color').oninput = (e) => state.text.color = e.targ
 document.getElementById('zoom-in').onclick = () => setZoom(state.zoom + 0.1);
 document.getElementById('zoom-out').onclick = () => setZoom(state.zoom - 0.1);
 document.getElementById('zoom-fit').onclick = fitToScreen;
-
 document.getElementById('layer-opacity').oninput = (e) => {
   const l = getActiveLayer();
   if (l) {
@@ -773,8 +753,6 @@ document.getElementById('layer-opacity').oninput = (e) => {
     l.canvas.style.opacity = l.opacity;
   }
 };
-
-
 document.getElementById('btn-add-layer').onclick = () => addLayer();
 document.getElementById('btn-delete-layer').onclick = deleteLayer;
 document.getElementById('btn-layer-up').onclick = () => moveLayerOrder(1);
@@ -888,22 +866,18 @@ document.getElementById('btn-new').onclick = () => {
   modalAction = 'new';
   modal.classList.remove('hidden');
 };
-
-
 document.getElementById('btn-resize').onclick = () => {
   document.getElementById('modal-title').innerText = "Resize Canvas";
   inpWidth.value = state.width;
   inpHeight.value = state.height;
   state.resize.originalAspectRatio = state.width / state.height; // Store original aspect ratio
-  keepAspectRatioCheckbox.checked = true; // Default to checked
+  keepAspectRatioCheckbox.checked = true;
   state.resize.keepAspectRatio = true;
   dimsGroup.classList.remove('hidden');
   scaleGroup.classList.add('hidden');
   modalAction = 'resize';
   modal.classList.remove('hidden');
 };
-
-
 document.getElementById('btn-scale-layer').onclick = () => {
   if (!getActiveLayer()) return;
   document.getElementById('modal-title').innerText = "Scale Active Layer";
@@ -914,8 +888,6 @@ document.getElementById('btn-scale-layer').onclick = () => {
   modal.classList.remove('hidden');
 };
 document.getElementById('btn-modal-cancel').onclick = () => modal.classList.add('hidden');
-
-
 document.getElementById('btn-modal-confirm').onclick = () => {
   if (modalAction === 'new') {
     const w = parseInt(inpWidth.value);
@@ -924,7 +896,7 @@ document.getElementById('btn-modal-confirm').onclick = () => {
       alert("Please enter valid width and height.");
       return;
     }
-    init(w, h); // init already handles saveState
+    init(w, h);
     fitToScreen();
   } else if (modalAction === 'resize') {
     const w = parseInt(inpWidth.value);
@@ -936,27 +908,22 @@ document.getElementById('btn-modal-confirm').onclick = () => {
     saveState();
     const oldW = state.width;
     const oldH = state.height;
-    setCanvasSize(w, h); // This updates state.width and state.height
-    
+    setCanvasSize(w, h);
     const scaleX = w / oldW;
     const scaleY = h / oldH;
-
     state.layers.forEach(l => {
       const temp = document.createElement('canvas');
       temp.width = oldW;
       temp.height = oldH;
       temp.getContext('2d').drawImage(l.canvas, 0, 0);
-      
       l.canvas.width = w;
       l.canvas.height = h;
       l.ctx = l.canvas.getContext('2d');
-      l.ctx.imageSmoothingEnabled = true; // Apply smoothing for resize
+      l.ctx.imageSmoothingEnabled = true;
       if (l.ctx.imageSmoothingQuality) {
         l.ctx.imageSmoothingQuality = "high";
       }
       l.ctx.drawImage(temp, 0, 0, w, h);
-
-      // Scale layer position proportionally
       l.x = l.x * scaleX;
       l.y = l.y * scaleY;
       l.canvas.style.transform = `translate(${l.x}px, ${l.y}px)`;
@@ -982,7 +949,6 @@ document.getElementById('btn-modal-confirm').onclick = () => {
         ctx.imageSmoothingQuality = "high";
       }
       ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
-      // Recalculate position to center the scaled image
       const newWidth = temp.width * scale;
       const newHeight = temp.height * scale;
       const startX = (layer.canvas.width - newWidth) / 2;
@@ -994,10 +960,6 @@ document.getElementById('btn-modal-confirm').onclick = () => {
   modal.classList.add('hidden');
   updateUndoRedoButtons();
 };
-
-
-
-
 inpWidth.addEventListener('input', () => {
   if (modalAction === 'resize' && state.resize.keepAspectRatio) {
     const newWidth = parseInt(inpWidth.value);
@@ -1006,7 +968,6 @@ inpWidth.addEventListener('input', () => {
     }
   }
 });
-
 inpHeight.addEventListener('input', () => {
   if (modalAction === 'resize' && state.resize.keepAspectRatio) {
     const newHeight = parseInt(inpHeight.value);
@@ -1015,10 +976,8 @@ inpHeight.addEventListener('input', () => {
     }
   }
 });
-
 keepAspectRatioCheckbox.addEventListener('change', () => {
   state.resize.keepAspectRatio = keepAspectRatioCheckbox.checked;
-  // If enabling aspect ratio, adjust one dimension based on the other immediately
   if (state.resize.keepAspectRatio && modalAction === 'resize') {
     const currentWidth = parseInt(inpWidth.value);
     const currentHeight = parseInt(inpHeight.value);
@@ -1029,8 +988,6 @@ keepAspectRatioCheckbox.addEventListener('change', () => {
     }
   }
 });
-
-
 
 function saveState() {
   if (state.isUndoingRedoing) return;
@@ -1056,30 +1013,21 @@ function saveState() {
   state.redoStack = [];
   updateUndoRedoButtons();
 }
-
 async function _applyStateSnapshot(snapshot, isProjectLoad = false) {
   state.isUndoingRedoing = true;
-
-  // Update canvas dimensions
   state.width = snapshot.width;
   state.height = snapshot.height;
   setCanvasSize(snapshot.width, snapshot.height);
-
   setZoom(snapshot.zoom);
-
-  // Clear existing layers from DOM and state
   state.layers.forEach(layer => layer.canvas.remove());
   state.layers = [];
-
-  // Reconstruct layers asynchronously
   const layerPromises = snapshot.layers.map(savedLayer => {
     return new Promise(resolve => {
       const canvas = document.createElement('canvas');
-      canvas.width = snapshot.width; // Use project's width/height, not current state's
+      canvas.width = snapshot.width;
       canvas.height = snapshot.height;
       canvas.id = `layer-${savedLayer.id}`;
       const ctx = canvas.getContext('2d');
-
       const img = new Image();
       img.onload = () => {
         ctx.drawImage(img, 0, 0);
@@ -1102,35 +1050,28 @@ async function _applyStateSnapshot(snapshot, isProjectLoad = false) {
       };
       img.onerror = () => {
         console.error(`Failed to load image for layer ${savedLayer.name}`);
-        resolve(); // Still resolve to not block Promise.all
+        resolve();
       };
       img.src = savedLayer.imageDataURL;
     });
   });
-
   await Promise.all(layerPromises);
-
-  // Sort layers by ID before applying active state for proper Z-index if they load out of order
   state.layers.sort((a, b) => a.id - b.id);
   refreshLayerZIndex();
-
   if (isProjectLoad) {
     state.nextLayerId = snapshot.nextLayerId || (state.layers.length > 0 ? Math.max(...state.layers.map(l => l.id)) + 1 : 1);
     state.undoStack = [];
     state.redoStack = [];
-    saveState(); // Save the loaded state as the first undoable state
+    saveState();
   }
-
   state.activeLayerId = snapshot.activeLayerId;
   state.isUndoingRedoing = false;
-
   updateLayersUI();
   updateUI();
-  drawCropOverlay(); // Ensure crop overlay is redrawn if tool is crop
+  drawCropOverlay();
   fitToScreen();
-  setTool(state.tool); // Re-apply current tool, esp. for crop/text cursor/overlay
+  setTool(state.tool);
 }
-
 
 function undo() {
   if (state.undoStack.length < 2) return;
@@ -1154,7 +1095,6 @@ function undo() {
   const previousState = state.undoStack[state.undoStack.length - 1];
   _applyStateSnapshot(previousState);
 }
-
 
 function redo() {
   if (state.redoStack.length === 0) return;
@@ -1184,7 +1124,7 @@ function saveProject() {
     height: state.height,
     zoom: state.zoom,
     activeLayerId: state.activeLayerId,
-    nextLayerId: state.nextLayerId, // Save for correct future layer IDs
+    nextLayerId: state.nextLayerId,
     layers: state.layers.map(layer => ({
       id: layer.id,
       name: layer.name,
@@ -1195,13 +1135,11 @@ function saveProject() {
       imageDataURL: layer.canvas.toDataURL()
     }))
   };
-
   const json = JSON.stringify(projectData, null, 2);
   const blob = new Blob([json], {
     type: 'application/json'
   });
   const url = URL.createObjectURL(blob);
-
   const a = document.createElement('a');
   a.href = url;
   a.download = 'project.json';
@@ -1213,12 +1151,11 @@ function saveProject() {
 
 function openProjectFile(file) {
   if (!file) return;
-
   const reader = new FileReader();
   reader.onload = async (e) => {
     try {
       const loadedProjectData = JSON.parse(e.target.result);
-      await _applyStateSnapshot(loadedProjectData, true); // true indicates it's a project load
+      await _applyStateSnapshot(loadedProjectData, true);
       console.log("Project loaded successfully.");
     } catch (error) {
       console.error("Failed to load project:", error);
@@ -1227,10 +1164,8 @@ function openProjectFile(file) {
   };
   reader.readAsText(file);
 }
-
 document.getElementById('btn-save-project').onclick = saveProject;
 projectInput.onchange = (e) => openProjectFile(e.target.files[0]);
-
 
 function updateUndoRedoButtons() {
   document.getElementById('btn-undo').disabled = state.undoStack.length <= 1;
