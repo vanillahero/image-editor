@@ -915,6 +915,7 @@ document.getElementById('btn-scale-layer').onclick = () => {
 };
 document.getElementById('btn-modal-cancel').onclick = () => modal.classList.add('hidden');
 
+
 document.getElementById('btn-modal-confirm').onclick = () => {
   if (modalAction === 'new') {
     const w = parseInt(inpWidth.value);
@@ -935,12 +936,17 @@ document.getElementById('btn-modal-confirm').onclick = () => {
     saveState();
     const oldW = state.width;
     const oldH = state.height;
-    setCanvasSize(w, h);
+    setCanvasSize(w, h); // This updates state.width and state.height
+    
+    const scaleX = w / oldW;
+    const scaleY = h / oldH;
+
     state.layers.forEach(l => {
       const temp = document.createElement('canvas');
       temp.width = oldW;
       temp.height = oldH;
       temp.getContext('2d').drawImage(l.canvas, 0, 0);
+      
       l.canvas.width = w;
       l.canvas.height = h;
       l.ctx = l.canvas.getContext('2d');
@@ -949,6 +955,11 @@ document.getElementById('btn-modal-confirm').onclick = () => {
         l.ctx.imageSmoothingQuality = "high";
       }
       l.ctx.drawImage(temp, 0, 0, w, h);
+
+      // Scale layer position proportionally
+      l.x = l.x * scaleX;
+      l.y = l.y * scaleY;
+      l.canvas.style.transform = `translate(${l.x}px, ${l.y}px)`;
     });
     fitToScreen();
   } else if (modalAction === 'scaleLayer') {
@@ -983,6 +994,7 @@ document.getElementById('btn-modal-confirm').onclick = () => {
   modal.classList.add('hidden');
   updateUndoRedoButtons();
 };
+
 
 
 
