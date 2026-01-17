@@ -61,14 +61,27 @@
                 <label>Size:</label>
                 <input type="range" id="brush-size" min="1" max="100" value="20">
               </div>
-              <div id="opt-text" class="option-group hidden">
-                <label>Text:</label>
-                <input type="text" id="text-content" value="Hello World">
-                <label>Size:</label>
-                <input type="number" id="text-size" value="40" min="8" max="200">
-                <input type="color" id="text-color" value="#ffffff">
-                <span style="font-size:11px; color:#888; margin-left:5px;">Click image</span>
-              </div>
+<div id="opt-text" class="option-group hidden">
+  <label>Text:</label>
+  <input type="text" id="text-content" value="Hello World">
+  <label>Size:</label>
+  <input type="number" id="text-size" value="40" min="8" max="200">
+  <input type="color" id="text-color" value="#ffffff">
+  <label>Font:</label>
+  <select id="text-font-family">
+    <option value="sans-serif">Sans-serif (Default)</option>
+    <option value="Arial, sans-serif">Arial</option>
+    <option value="Verdana, sans-serif">Verdana</option>
+    <option value="Georgia, serif">Georgia</option>
+    <option value="Times New Roman, serif">Times New Roman</option>
+    <option value="Courier New, monospace">Courier New</option>
+  </select>
+  <label style="display:flex; align-items:center; gap:5px; white-space:nowrap;">
+    Shadow: <input type="checkbox" id="text-shadow-enabled" style="width:auto; margin:0;">
+  </label>
+  <span style="font-size:11px; color:#888; margin-left:5px;">Click image</span>
+</div>
+
               <div id="opt-crop" class="option-group hidden">
                 <div class="crop-ratio-group">
                   <label style="font-size:11px; color:#888;">Ratio:</label>
