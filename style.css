@@ -50,15 +50,39 @@ body {
 }
 
 .top-bar {
-  height: 40px;
   background-color: var(--panel-color);
   border-bottom: 1px solid var(--border-color);
   display: flex;
-  align-items: center;
-  padding: 0 15px;
-  gap: 15px;
+  flex-direction: column; /* Stack rows vertically */
+  padding: 8px 15px; /* Adjust padding for 2 rows */
+  gap: 8px; /* Space between rows */
   flex-shrink: 0;
 }
+.top-bar-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 10px; /* Space between elements in a row */
+}
+
+.divider {
+  width: 1px;
+  height: 18px; /* Slightly shorter for the new row height */
+  background: #444;
+  margin: 0 5px; /* Adjust margin */
+}
+
+.crop-ratio-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.zoom-controls .btn.secondary {
+  padding: 2px 8px;
+  font-size: 10px;
+}
+
 
 .right-panel {
   width: 260px;
@@ -242,9 +266,10 @@ body {
   display: flex;
   align-items: center;
   gap: 15px;
-  flex-grow: 1;
+  flex-grow: 1; /* Allows tool options to take available space */
   overflow: hidden;
 }
+
 
 .option-group {
   display: flex;
@@ -304,8 +329,8 @@ input[type="text"] {
   background: var(--input-bg);
   padding: 3px;
   border-radius: 4px;
-  margin-right: 10px;
 }
+
 
 .zoom-label {
   min-width: 45px;
