@@ -50,6 +50,7 @@ const state = {
   isUndoingRedoing: false
 };
 
+
 const stage = document.getElementById('canvas-stage');
 const wrapper = document.getElementById('canvas-wrapper');
 const cropOverlay = document.getElementById('crop-overlay');
@@ -62,7 +63,8 @@ const inpWidth = document.getElementById('inp-width');
 const inpHeight = document.getElementById('inp-height');
 const cropRatioButtons = document.querySelectorAll('.crop-ratio-btn');
 const HANDLE_SIZE = 8;
-const tools = ['move', 'brush', 'eraser', 'text', 'crop'];
+const tools = ['move', 'brush', 'eraser', 'text', 'crop', 'filters'];
+
 
 function init(w = 800, h = 600) {
   state.isUndoingRedoing = true;
@@ -162,13 +164,18 @@ function addLayer(name, sourceImage = null) {
     visible: true,
     opacity: 1.0,
     x: 0,
-    y: 0
+    y: 0,
+    brightness: 100, // Default filter values
+    contrast: 100,
+    saturate: 100
   };
   state.layers.push(layer);
   stage.insertBefore(canvas, cropOverlay);
   setActiveLayer(id);
+  applyLayerStyles(layer); // Apply initial styles including filters
   return layer;
 }
+
 
 function setActiveLayer(id) {
   state.activeLayerId = id;
@@ -179,6 +186,15 @@ function setActiveLayer(id) {
 function getActiveLayer() {
   return state.layers.find(l => l.id === state.activeLayerId);
 }
+
+function applyLayerStyles(layer) {
+  if (!layer || !layer.canvas) return;
+  layer.canvas.style.opacity = layer.opacity;
+  layer.canvas.style.display = layer.visible ? 'block' : 'none';
+  layer.canvas.style.transform = `translate(${layer.x}px, ${layer.y}px)`;
+  layer.canvas.style.filter = `brightness(${layer.brightness}%) contrast(${layer.contrast}%) saturate(${layer.saturate}%)`;
+}
+
 
 function deleteLayer() {
   if (state.layers.length <= 1) return alert("Cannot delete the last layer");
@@ -681,7 +697,7 @@ function exitCropMode() {
 
 function updateUI() {
   tools.forEach(t => {
-    document.getElementById(`tool-${t}`).classList.toggle('active', state.tool === t);
+    document.getElementById(`tool-${t}`)?.classList.toggle('active', state.tool === t); // Use optional chaining for tools not yet added as buttons
   });
   document.querySelectorAll('.option-group').forEach(el => el.classList.add('hidden'));
   if (state.tool === 'brush' || state.tool === 'eraser') document.getElementById('opt-brush').classList.remove('hidden');
@@ -696,12 +712,22 @@ function updateUI() {
       btn.classList.toggle('active', btn.dataset.ratio === state.crop.aspectRatio);
     });
   }
+  if (state.tool === 'filters') {
+    document.getElementById('opt-filters').classList.remove('hidden');
+    const activeLayer = getActiveLayer();
+    if (activeLayer) {
+      document.getElementById('filter-light-slider').value = activeLayer.brightness;
+      document.getElementById('filter-contrast-slider').value = activeLayer.contrast;
+      document.getElementById('filter-saturation-slider').value = activeLayer.saturate;
+    }
+  }
   const active = getActiveLayer();
   if (active) {
     document.getElementById('layer-opacity').value = active.opacity * 100;
   }
   updateUndoRedoButtons();
 }
+
 
 
 function updateLayersUI() {
@@ -729,6 +755,7 @@ function updateLayersUI() {
   refreshLayerZIndex();
 }
 
+
 function setTool(t) {
   state.tool = t;
   if (t === 'crop') {
@@ -753,11 +780,18 @@ function setTool(t) {
   }
   updateUI();
 }
+
+
+
 document.getElementById('tool-move').onclick = () => setTool('move');
 document.getElementById('tool-brush').onclick = () => setTool('brush');
 document.getElementById('tool-eraser').onclick = () => setTool('eraser');
 document.getElementById('tool-text').onclick = () => setTool('text');
+
 document.getElementById('tool-crop').onclick = () => setTool('crop');
+document.getElementById('btn-filters').onclick = () => setTool('filters');
+
+
 document.getElementById('brush-size').oninput = (e) => state.brush.size = e.target.value;
 document.getElementById('brush-color').oninput = (e) => state.brush.color = e.target.value;
 document.getElementById('text-content').oninput = (e) => state.text.content = e.target.value;
@@ -765,20 +799,50 @@ document.getElementById('text-size').oninput = (e) => state.text.size = e.target
 
 document.getElementById('text-color').oninput = (e) => state.text.color = e.target.value;
 document.getElementById('text-font-family').onchange = (e) => state.text.fontFamily = e.target.value;
+
 document.getElementById('text-shadow-enabled').onchange = (e) => state.text.shadowEnabled = e.target.checked;
+
+document.getElementById('filter-light-slider').oninput = (e) => {
+  const layer = getActiveLayer();
+  if (layer) {
+    saveState();
+    layer.brightness = e.target.value;
+    applyLayerStyles(layer);
+  }
+};
+document.getElementById('filter-contrast-slider').oninput = (e) => {
+  const layer = getActiveLayer();
+  if (layer) {
+    saveState();
+    layer.contrast = e.target.value;
+    applyLayerStyles(layer);
+  }
+};
+document.getElementById('filter-saturation-slider').oninput = (e) => {
+  const layer = getActiveLayer();
+  if (layer) {
+    saveState();
+    layer.saturate = e.target.value;
+    applyLayerStyles(layer);
+  }
+};
+
 
 
 document.getElementById('zoom-in').onclick = () => setZoom(state.zoom + 0.1);
 document.getElementById('zoom-out').onclick = () => setZoom(state.zoom - 0.1);
 document.getElementById('zoom-fit').onclick = fitToScreen;
+
 document.getElementById('layer-opacity').oninput = (e) => {
   const l = getActiveLayer();
   if (l) {
     saveState();
     l.opacity = e.target.value / 100;
-    l.canvas.style.opacity = l.opacity;
+    applyLayerStyles(l);
   }
 };
+
+
 document.getElementById('btn-add-layer').onclick = () => addLayer();
 document.getElementById('btn-delete-layer').onclick = deleteLayer;
 document.getElementById('btn-layer-up').onclick = () => moveLayerOrder(1);
@@ -1019,6 +1083,7 @@ keepAspectRatioCheckbox.addEventListener('change', () => {
   }
 });
 
+
 function saveState() {
   if (state.isUndoingRedoing) return;
   const snapshot = {
@@ -1033,6 +1098,9 @@ function saveState() {
       y: layer.y,
       opacity: layer.opacity,
       visible: layer.visible,
+      brightness: layer.brightness, // Save filter values
+      contrast: layer.contrast,
+      saturate: layer.saturate,
       imageDataURL: layer.canvas.toDataURL()
     }))
   };
@@ -1043,6 +1111,9 @@ function saveState() {
   state.redoStack = [];
   updateUndoRedoButtons();
 }
+
+
+
 async function _applyStateSnapshot(snapshot, isProjectLoad = false) {
   state.isUndoingRedoing = true;
   state.width = snapshot.width;
@@ -1069,13 +1140,14 @@ async function _applyStateSnapshot(snapshot, isProjectLoad = false) {
           visible: savedLayer.visible,
           opacity: savedLayer.opacity,
           x: savedLayer.x,
-          y: savedLayer.y
+          y: savedLayer.y,
+          brightness: savedLayer.brightness || 100, // Load filter values, default if not present
+          contrast: savedLayer.contrast || 100,
+          saturate: savedLayer.saturate || 100
         };
         state.layers.push(layer);
         stage.insertBefore(canvas, cropOverlay);
-        layer.canvas.style.opacity = layer.opacity;
-        layer.canvas.style.display = layer.visible ? 'block' : 'none';
-        layer.canvas.style.transform = `translate(${layer.x}px, ${layer.y}px)`;
+        applyLayerStyles(layer); // Apply loaded styles including filters
         resolve();
       };
       img.onerror = () => {
@@ -1103,6 +1175,7 @@ async function _applyStateSnapshot(snapshot, isProjectLoad = false) {
   setTool(state.tool);
 }
 
+
 function undo() {
   if (state.undoStack.length < 2) return;
   const currentState = {
@@ -1117,6 +1190,9 @@ function undo() {
       y: layer.y,
       opacity: layer.opacity,
       visible: layer.visible,
+      brightness: layer.brightness,
+      contrast: layer.contrast,
+      saturate: layer.saturate,
       imageDataURL: layer.canvas.toDataURL()
     }))
   };
@@ -1125,6 +1201,7 @@ function undo() {
   const previousState = state.undoStack[state.undoStack.length - 1];
   _applyStateSnapshot(previousState);
 }
+
 
 function redo() {
   if (state.redoStack.length === 0) return;
@@ -1140,6 +1217,9 @@ function redo() {
       y: layer.y,
       opacity: layer.opacity,
       visible: layer.visible,
+      brightness: layer.brightness,
+      contrast: layer.contrast,
+      saturate: layer.saturate,
       imageDataURL: layer.canvas.toDataURL()
     }))
   };
@@ -1147,6 +1227,7 @@ function redo() {
   const nextState = state.redoStack.pop();
   _applyStateSnapshot(nextState);
 }
+
 
 function saveProject() {
   const projectData = {
@@ -1162,6 +1243,9 @@ function saveProject() {
       y: layer.y,
       opacity: layer.opacity,
       visible: layer.visible,
+      brightness: layer.brightness,
+      contrast: layer.contrast,
+      saturate: layer.saturate,
       imageDataURL: layer.canvas.toDataURL()
     }))
   };
@@ -1178,6 +1262,7 @@ function saveProject() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
 
 function openProjectFile(file) {
   if (!file) return;
