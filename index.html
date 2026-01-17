@@ -54,6 +54,15 @@
             <div class="divider"></div>
             <button class="btn secondary" id="btn-undo" title="Undo (Ctrl+Z)" disabled>Undo</button>
             <button class="btn secondary" id="btn-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
+            
+            <div class="zoom-controls" style="margin-left: auto;">
+              <button class="icon-btn" id="zoom-out" title="Zoom Out">-</button>
+              <span class="zoom-label" id="zoom-val">100%</span>
+              <button class="icon-btn" id="zoom-in" title="Zoom In">+</button>
+              <button class="btn secondary" id="zoom-fit">Fit</button>
+              <button class="btn secondary" id="zoom-orig">Orig</button>
+            </div>
+            <button class="btn" id="btn-export">Export</button>
           </div>
 
           <div class="top-bar-row tool-options">
@@ -116,21 +125,7 @@
               <input type="range" id="filter-saturation-slider" min="0" max="200" value="100">
             </div>
           </div>
-
-          <div class="top-bar-row">
-            <div class="zoom-controls">
-              <button class="icon-btn" id="zoom-out" title="Zoom Out">-</button>
-              <span class="zoom-label" id="zoom-val">100%</span>
-              <button class="icon-btn" id="zoom-in" title="Zoom In">+</button>
-              <button class="btn secondary" id="zoom-fit">Fit</button>
-              <button class="btn secondary" id="zoom-orig">Orig</button>
-            </div>
-            <button class="btn" id="btn-export">Export</button>
-          </div>
         </div>
-
-
-
 
         <div class="canvas-wrapper" id="canvas-wrapper">
           <div id="canvas-stage">
