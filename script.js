@@ -950,6 +950,7 @@ document.getElementById('btn-modal-confirm').onclick = () => {
       }
       l.ctx.drawImage(temp, 0, 0, w, h);
     });
+    fitToScreen();
   } else if (modalAction === 'scaleLayer') {
     const scale = parseFloat(document.getElementById('inp-scale').value) / 100;
     if (isNaN(scale) || scale <= 0) {
@@ -982,6 +983,7 @@ document.getElementById('btn-modal-confirm').onclick = () => {
   modal.classList.add('hidden');
   updateUndoRedoButtons();
 };
+
 
 
 inpWidth.addEventListener('input', () => {
