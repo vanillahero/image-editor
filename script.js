@@ -38,11 +38,18 @@ const state = {
     initialMouseY: 0,
     initialRect: null
   },
+  resize: { // New state for resize modal
+    keepAspectRatio: true,
+    originalAspectRatio: 1
+  },
   undoStack: [],
   redoStack: [],
   maxHistory: 20,
   isUndoingRedoing: false
 };
+
+
+
 const stage = document.getElementById('canvas-stage');
 const wrapper = document.getElementById('canvas-wrapper');
 const cropOverlay = document.getElementById('crop-overlay');
@@ -50,8 +57,14 @@ const cropCtx = cropOverlay.getContext('2d');
 const layersList = document.getElementById('layers-list');
 
 const cropDimensionsSpan = document.getElementById('crop-dimensions');
+
+
 const projectInput = document.getElementById('project-input');
+const keepAspectRatioCheckbox = document.getElementById('keep-aspect-ratio');
+const inpWidth = document.getElementById('inp-width');
+const inpHeight = document.getElementById('inp-height');
 const cropRatioButtons = document.querySelectorAll('.crop-ratio-btn');
+
 
 
 const HANDLE_SIZE = 8;
@@ -875,15 +888,22 @@ document.getElementById('btn-new').onclick = () => {
   modalAction = 'new';
   modal.classList.remove('hidden');
 };
+
+
 document.getElementById('btn-resize').onclick = () => {
   document.getElementById('modal-title').innerText = "Resize Canvas";
-  document.getElementById('inp-width').value = state.width;
-  document.getElementById('inp-height').value = state.height;
+  inpWidth.value = state.width;
+  inpHeight.value = state.height;
+  state.resize.originalAspectRatio = state.width / state.height; // Store original aspect ratio
+  keepAspectRatioCheckbox.checked = true; // Default to checked
+  state.resize.keepAspectRatio = true;
   dimsGroup.classList.remove('hidden');
   scaleGroup.classList.add('hidden');
   modalAction = 'resize';
   modal.classList.remove('hidden');
 };
+
+
 document.getElementById('btn-scale-layer').onclick = () => {
   if (!getActiveLayer()) return;
   document.getElementById('modal-title').innerText = "Scale Active Layer";
@@ -897,8 +917,8 @@ document.getElementById('btn-modal-cancel').onclick = () => modal.classList.add(
 
 document.getElementById('btn-modal-confirm').onclick = () => {
   if (modalAction === 'new') {
-    const w = parseInt(document.getElementById('inp-width').value);
-    const h = parseInt(document.getElementById('inp-height').value);
+    const w = parseInt(inpWidth.value);
+    const h = parseInt(inpHeight.value);
     if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
       alert("Please enter valid width and height.");
       return;
@@ -906,8 +926,8 @@ document.getElementById('btn-modal-confirm').onclick = () => {
     init(w, h); // init already handles saveState
     fitToScreen();
   } else if (modalAction === 'resize') {
-    const w = parseInt(document.getElementById('inp-width').value);
-    const h = parseInt(document.getElementById('inp-height').value);
+    const w = parseInt(inpWidth.value);
+    const h = parseInt(inpHeight.value);
     if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
       alert("Please enter valid width and height.");
       return;
@@ -962,6 +982,40 @@ document.getElementById('btn-modal-confirm').onclick = () => {
   modal.classList.add('hidden');
   updateUndoRedoButtons();
 };
+
+
+inpWidth.addEventListener('input', () => {
+  if (modalAction === 'resize' && state.resize.keepAspectRatio) {
+    const newWidth = parseInt(inpWidth.value);
+    if (!isNaN(newWidth) && newWidth > 0) {
+      inpHeight.value = Math.round(newWidth / state.resize.originalAspectRatio);
+    }
+  }
+});
+
+inpHeight.addEventListener('input', () => {
+  if (modalAction === 'resize' && state.resize.keepAspectRatio) {
+    const newHeight = parseInt(inpHeight.value);
+    if (!isNaN(newHeight) && newHeight > 0) {
+      inpWidth.value = Math.round(newHeight * state.resize.originalAspectRatio);
+    }
+  }
+});
+
+keepAspectRatioCheckbox.addEventListener('change', () => {
+  state.resize.keepAspectRatio = keepAspectRatioCheckbox.checked;
+  // If enabling aspect ratio, adjust one dimension based on the other immediately
+  if (state.resize.keepAspectRatio && modalAction === 'resize') {
+    const currentWidth = parseInt(inpWidth.value);
+    const currentHeight = parseInt(inpHeight.value);
+    if (!isNaN(currentWidth) && currentWidth > 0) {
+      inpHeight.value = Math.round(currentWidth / state.resize.originalAspectRatio);
+    } else if (!isNaN(currentHeight) && currentHeight > 0) {
+      inpWidth.value = Math.round(currentHeight * state.resize.originalAspectRatio);
+    }
+  }
+});
+
 
 
 function saveState() {
