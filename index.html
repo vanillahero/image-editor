@@ -36,66 +36,60 @@
         </button>
       </div>
       <div class="main-area">
-
-
-<div class="top-bar">
-  <div class="top-bar-row">
-    <label class="btn secondary">
-      Open <input type="file" id="file-input" accept="image/*" style="display:none">
-    </label>
-    <button class="btn secondary" id="btn-new">New</button>
-    <button class="btn secondary" id="btn-resize">Resize</button>
-    <div class="divider"></div>
-    <button class="btn secondary" id="btn-save-project">Save Project</button>
-    <label class="btn secondary">
-      Open Project <input type="file" id="project-input" accept=".json" style="display:none">
-    </label>
-    <div class="divider"></div>
-    <button class="btn secondary" id="btn-undo" title="Undo (Ctrl+Z)" disabled>Undo</button>
-    <button class="btn secondary" id="btn-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
-  </div>
-  <div class="top-bar-row">
-    <div class="tool-options">
-      <div id="opt-brush" class="option-group hidden">
-        <label>Color:</label>
-        <input type="color" id="brush-color" value="#ffffff">
-        <label>Size:</label>
-        <input type="range" id="brush-size" min="1" max="100" value="20">
-      </div>
-      <div id="opt-text" class="option-group hidden">
-        <label>Text:</label>
-        <input type="text" id="text-content" value="Hello World">
-        <label>Size:</label>
-        <input type="number" id="text-size" value="40" min="8" max="200">
-        <input type="color" id="text-color" value="#ffffff">
-        <span style="font-size:11px; color:#888; margin-left:5px;">Click image</span>
-      </div>
-      <div id="opt-crop" class="option-group hidden">
-        <div class="crop-ratio-group">
-          <label style="font-size:11px; color:#888;">Ratio:</label>
-          <button class="btn secondary crop-ratio-btn active" data-ratio="free">Free</button>
-          <button class="btn secondary crop-ratio-btn" data-ratio="square">1:1</button>
-          <button class="btn secondary crop-ratio-btn" data-ratio="4:3">4:3</button>
-          <button class="btn secondary crop-ratio-btn" data-ratio="16:9">16:9</button>
+        <div class="top-bar">
+          <div class="top-bar-row">
+            <label class="btn secondary">
+              Open <input type="file" id="file-input" accept="image/*" style="display:none">
+            </label>
+            <button class="btn secondary" id="btn-new">New</button>
+            <button class="btn secondary" id="btn-resize">Resize</button>
+            <div class="divider"></div>
+            <button class="btn secondary" id="btn-save-project">Save Project</button>
+            <label class="btn secondary">
+              Open Project <input type="file" id="project-input" accept=".json" style="display:none">
+            </label>
+            <div class="divider"></div>
+            <button class="btn secondary" id="btn-undo" title="Undo (Ctrl+Z)" disabled>Undo</button>
+            <button class="btn secondary" id="btn-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
+          </div>
+          <div class="top-bar-row">
+            <div class="tool-options">
+              <div id="opt-brush" class="option-group hidden">
+                <label>Color:</label>
+                <input type="color" id="brush-color" value="#ffffff">
+                <label>Size:</label>
+                <input type="range" id="brush-size" min="1" max="100" value="20">
+              </div>
+              <div id="opt-text" class="option-group hidden">
+                <label>Text:</label>
+                <input type="text" id="text-content" value="Hello World">
+                <label>Size:</label>
+                <input type="number" id="text-size" value="40" min="8" max="200">
+                <input type="color" id="text-color" value="#ffffff">
+                <span style="font-size:11px; color:#888; margin-left:5px;">Click image</span>
+              </div>
+              <div id="opt-crop" class="option-group hidden">
+                <div class="crop-ratio-group">
+                  <label style="font-size:11px; color:#888;">Ratio:</label>
+                  <button class="btn secondary crop-ratio-btn active" data-ratio="free">Free</button>
+                  <button class="btn secondary crop-ratio-btn" data-ratio="square">1:1</button>
+                  <button class="btn secondary crop-ratio-btn" data-ratio="4:3">4:3</button>
+                  <button class="btn secondary crop-ratio-btn" data-ratio="16:9">16:9</button>
+                </div>
+                <span id="crop-dimensions" style="font-size:11px; color:#888; white-space:nowrap;">Draw rect to crop</span>
+                <button class="btn" id="btn-apply-crop">Apply</button>
+                <button class="btn secondary" id="btn-cancel-crop">Cancel</button>
+              </div>
+            </div>
+            <div class="zoom-controls">
+              <button class="icon-btn" id="zoom-out" title="Zoom Out">-</button>
+              <span class="zoom-label" id="zoom-val">100%</span>
+              <button class="icon-btn" id="zoom-in" title="Zoom In">+</button>
+              <button class="btn secondary" id="zoom-fit">Fit</button>
+            </div>
+            <button class="btn" id="btn-export">Export</button>
+          </div>
         </div>
-        <span id="crop-dimensions" style="font-size:11px; color:#888; white-space:nowrap;">Draw rect to crop</span>
-        <button class="btn" id="btn-apply-crop">Apply</button>
-        <button class="btn secondary" id="btn-cancel-crop">Cancel</button>
-      </div>
-    </div>
-    <div class="zoom-controls">
-      <button class="icon-btn" id="zoom-out" title="Zoom Out">-</button>
-      <span class="zoom-label" id="zoom-val">100%</span>
-      <button class="icon-btn" id="zoom-in" title="Zoom In">+</button>
-      <button class="btn secondary" id="zoom-fit">Fit</button>
-    </div>
-    <button class="btn" id="btn-export">Export</button>
-  </div>
-</div>
-
-
-
-
         <div class="canvas-wrapper" id="canvas-wrapper">
           <div id="canvas-stage">
             <canvas id="crop-overlay"></canvas>
@@ -141,26 +135,20 @@
     <div id="dim-modal" class="modal-overlay hidden">
       <div class="modal">
         <h3 id="modal-title">New Image</h3>
-
-
-
-<div id="dims-group">
-  <div class="form-row">
-    <label>Width (px)</label>
-    <input type="number" id="inp-width" value="800">
-  </div>
-  <div class="form-row">
-    <label>Height (px)</label>
-    <input type="number" id="inp-height" value="600">
-  </div>
-  <div class="form-row" style="flex-direction: row; align-items: center;">
-    <input type="checkbox" id="keep-aspect-ratio" checked style="width:auto; margin-right: 5px;">
-    <label for="keep-aspect-ratio" style="margin-bottom:0;">Keep Aspect Ratio</label>
-  </div>
-</div>
-
-
-
+        <div id="dims-group">
+          <div class="form-row">
+            <label>Width (px)</label>
+            <input type="number" id="inp-width" value="800">
+          </div>
+          <div class="form-row">
+            <label>Height (px)</label>
+            <input type="number" id="inp-height" value="600">
+          </div>
+          <div class="form-row" style="flex-direction: row; align-items: center;">
+            <input type="checkbox" id="keep-aspect-ratio" checked style="width:auto; margin-right: 5px;">
+            <label for="keep-aspect-ratio" style="margin-bottom:0;">Keep Aspect Ratio</label>
+          </div>
+        </div>
         <div id="scale-group" class="hidden">
           <div class="form-row">
             <label>Scale Percentage (%)</label>
