@@ -912,6 +912,8 @@ function moveCropRect(currentPos) {
   state.crop.rect.y = newY;
 }
 const fileInput = document.getElementById('file-input');
+
+
 fileInput.onchange = (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -919,7 +921,11 @@ fileInput.onchange = (e) => {
   reader.onload = (evt) => {
     const img = new Image();
     img.onload = () => {
-      saveState();
+      // Removed saveState() from here.
+      // The state before the image load is already captured by init() or a previous action.
+      // The *next* user action (e.g., first brush stroke) will correctly save the state
+      // *after* the image has been loaded, providing a correct undo point.
+
       if (state.layers.length === 1 && state.layers[0].name === "Background") {
         setCanvasSize(img.width, img.height);
         const bg = state.layers[0];
@@ -936,9 +942,12 @@ fileInput.onchange = (e) => {
     };
     img.src = evt.target.result;
   };
-  reader.readAsDataURL(file);
   fileInput.value = '';
 };
+
+
+
+
 document.getElementById('btn-export').onclick = () => {
   const exCanvas = document.createElement('canvas');
   exCanvas.width = state.width;
